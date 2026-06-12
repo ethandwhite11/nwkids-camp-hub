@@ -1,8 +1,8 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react'
 import { db, auth } from './firebase'
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
-import { ChevronLeft, Search, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Leaf } from 'lucide-react'
+import { ChevronLeft, Search, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Users, Play, MessageSquare, Clock } from 'lucide-react'
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const DARK = {
@@ -37,6 +37,13 @@ const TEAM = {
 }
 
 const DEFAULT_SCORES = { red: 0, yellow: 0, green: 0, blue: 0 }
+
+const DEFAULT_TEAM_DATA = {
+  cheer_url: '',
+  message: '',
+  message_active: false,
+  points_log: [],
+}
 
 const SCHEDULE = {
   1: [
@@ -187,6 +194,12 @@ function getCurrentActivity(sched, now) {
   return { current: sched[sched.length - 1], next: null, minIn: 0, duration: 60 }
 }
 
+function formatTimestamp(ts) {
+  if (!ts) return ''
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 // ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
 function SCard({ children, style }) {
   const C = useC()
@@ -206,14 +219,14 @@ function SecLabel({ children }) {
   )
 }
 
-function BackHeader({ title, onBack }) {
+function BackHeader({ title, onBack, accentColor }) {
   const C = useC()
   return (
     <div style={{ padding: 'calc(14px + env(safe-area-inset-top,0px)) 16px 14px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: `1px solid ${C.border}`, background: C.bg, position: 'sticky', top: 0, zIndex: 10 }}>
-      <Tap onClick={onBack} style={{ color: C.accent, padding: '4px 6px 4px 0', display: 'flex', alignItems: 'center' }}>
+      <Tap onClick={onBack} style={{ color: accentColor || C.accent, padding: '4px 6px 4px 0', display: 'flex', alignItems: 'center' }}>
         <ChevronLeft size={22} strokeWidth={2.5} />
       </Tap>
-      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.text, fontFamily: "'Oswald',sans-serif" }}>
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: accentColor || C.text, fontFamily: "'Oswald',sans-serif" }}>
         {title}
       </h2>
     </div>
@@ -269,17 +282,9 @@ function SplashScreen({ onDone }) {
       transition: exiting ? 'opacity 0.5s ease' : 'none',
       backgroundImage: 'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 14px)',
     }}>
-      <img
-        src="/apple-touch-icon.png"
-        alt="NW Kids"
-        style={{ width: 160, height: 160, borderRadius: 36, marginBottom: 28, animation: 'splashIcon 0.75s cubic-bezier(0.34,1.56,0.64,1) forwards' }}
-      />
-      <p style={{ margin: '0 0 4px', fontFamily: "'Oswald',sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8E020', animation: 'splashText 0.5s ease 0.4s both' }}>
-        NW Kids
-      </p>
-      <p style={{ margin: 0, fontFamily: "'Oswald',sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F0EDDF', animation: 'splashText 0.5s ease 0.5s both' }}>
-        Summer Camp
-      </p>
+      <img src="/apple-touch-icon.png" alt="NW Kids" style={{ width: 160, height: 160, borderRadius: 36, marginBottom: 28, animation: 'splashIcon 0.75s cubic-bezier(0.34,1.56,0.64,1) forwards' }} />
+      <p style={{ margin: '0 0 4px', fontFamily: "'Oswald',sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8E020', animation: 'splashText 0.5s ease 0.4s both' }}>NW Kids</p>
+      <p style={{ margin: 0, fontFamily: "'Oswald',sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#F0EDDF', animation: 'splashText 0.5s ease 0.5s both' }}>Summer Camp</p>
     </div>
   )
 }
@@ -369,10 +374,7 @@ function NowBanner({ campInfo, now, myTeam, onViewSchedule }) {
   const progress = duration > 0 ? minIn / duration : 0
 
   const bannerStyle = {
-    background: C.bannerBg,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 0,
+    background: C.bannerBg, borderRadius: 16, padding: 18, marginBottom: 0,
     border: `1px solid ${C.bannerBdr}`,
     backgroundImage: `repeating-linear-gradient(-45deg,${C.bannerStripe} 0px,${C.bannerStripe} 1px,transparent 1px,transparent 12px)`,
   }
@@ -419,17 +421,11 @@ function NowBanner({ campInfo, now, myTeam, onViewSchedule }) {
           {current.emoji} {current.label}
         </p>
         <div style={{ background: t.dark, border: `1.5px solid ${t.color}60`, borderRadius: 12, padding: '14px 16px', marginBottom: 8 }}>
-          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: t.color, fontFamily: "'Oswald',sans-serif" }}>
-            {t.label} Team — Your Location
-          </p>
-          <p style={{ margin: '0 0 12px', fontSize: 32, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1 }}>
-            {myLoc}
-          </p>
+          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: t.color, fontFamily: "'Oswald',sans-serif" }}>{t.label} Team — Your Location</p>
+          <p style={{ margin: '0 0 12px', fontSize: 32, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1 }}>{myLoc}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: t.color, whiteSpace: 'nowrap' }}>{remaining} min left</p>
-            <div style={{ flex: 1 }}>
-              <ProgressBar progress={progress} color={t.color} />
-            </div>
+            <div style={{ flex: 1 }}><ProgressBar progress={progress} color={t.color} /></div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 5 }}>
@@ -492,14 +488,15 @@ function NowBanner({ campInfo, now, myTeam, onViewSchedule }) {
 
 // ─── HOME SCREEN ──────────────────────────────────────────────────────────────
 const HOME_CARDS = [
+  { id: 'teamhub',  Icon: Users,      label: 'Team Hub',  sub: 'Your team space'  },
   { id: 'faq',      Icon: HelpCircle, label: 'FAQ',       sub: 'Common questions' },
   { id: 'rules',    Icon: BookOpen,   label: 'Rules',     sub: 'Camp guidelines'  },
   { id: 'contacts', Icon: Phone,      label: 'Contacts',  sub: 'Leadership team'  },
-  { id: 'freetime', Icon: Leaf,       label: 'Free Time', sub: 'Things to do'     },
 ]
 
 function HomeScreen({ campInfo, now, nav, announcement, myTeam }) {
   const C = useC()
+  const t = myTeam ? TEAM[myTeam] : null
   return (
     <div style={{ padding: '16px 16px calc(92px + env(safe-area-inset-bottom,0px))' }}>
       {announcement && (
@@ -513,13 +510,157 @@ function HomeScreen({ campInfo, now, nav, announcement, myTeam }) {
       </div>
       <SecLabel>More</SecLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, animation: 'fadeUp 0.35s ease 0.1s both' }}>
-        {HOME_CARDS.map(({ id, Icon, label, sub }) => (
-          <Tap key={id} onClick={() => nav(id, true)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px 16px', textAlign: 'left' }}>
-            <Icon size={28} color={C.active} strokeWidth={1.75} style={{ marginBottom: 10, display: 'block' }} />
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: C.muted }}>{sub}</p>
-          </Tap>
+        {HOME_CARDS.map(({ id, Icon, label, sub }) => {
+          const isHub = id === 'teamhub'
+          const cardColor = isHub && t ? t.color : C.active
+          const cardBg = isHub && t ? t.bg : C.surface
+          const cardBorder = isHub && t ? `1px solid ${t.color}40` : `1px solid ${C.border}`
+          return (
+            <Tap key={id} onClick={() => nav(id, true)} style={{ background: cardBg, border: cardBorder, borderRadius: 16, padding: '20px 16px', textAlign: 'left' }}>
+              <Icon size={28} color={cardColor} strokeWidth={1.75} style={{ marginBottom: 10, display: 'block' }} />
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: isHub && t ? t.color : C.text, fontFamily: "'Oswald',sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                {isHub && t ? `${t.label} Hub` : label}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: C.muted }}>{sub}</p>
+            </Tap>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── TEAM HUB PAGE ────────────────────────────────────────────────────────────
+function TeamHubPage({ myTeam, campInfo, now, onBack }) {
+  const C = useC()
+  const t = TEAM[myTeam]
+  const [teamData, setTeamData] = useState(DEFAULT_TEAM_DATA)
+
+  useEffect(() => {
+    const ref = doc(db, 'teams', myTeam)
+    return onSnapshot(ref, snap => {
+      if (snap.exists()) setTeamData({ ...DEFAULT_TEAM_DATA, ...snap.data() })
+      else setTeamData(DEFAULT_TEAM_DATA)
+    })
+  }, [myTeam])
+
+  const sched = campInfo ? getSchedule(campInfo.day) : []
+  const rots  = campInfo && (campInfo.day === 2 || campInfo.day === 3) ? ROTATIONS[campInfo.day] : null
+  const myRotations = rots
+    ? [1, 2, 3, 4].map(n => ({ rotNum: n, location: rots[n][myTeam], time: sched.find(s => s.isRotation && s.rotNum === n)?.time })).filter(r => r.location)
+    : []
+
+  const openCheer = () => {
+    if (teamData.cheer_url) window.open(teamData.cheer_url, '_blank')
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        padding: 'calc(14px + env(safe-area-inset-top,0px)) 16px 18px',
+        borderBottom: `1px solid ${C.border}`,
+        background: `linear-gradient(160deg, ${t.dark} 0%, ${C.bg} 100%)`,
+        position: 'sticky', top: 0, zIndex: 10,
+      }}>
+        <Tap onClick={onBack} style={{ color: t.color, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10, width: 'fit-content' }}>
+          <ChevronLeft size={20} strokeWidth={2.5} />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Home</span>
+        </Tap>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: t.color, boxShadow: `0 0 20px ${t.color}60`, flexShrink: 0 }} />
+          <div>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Your Team</p>
+            <h2 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.text, fontFamily: "'Oswald',sans-serif", lineHeight: 1 }}>{t.label} Hub</h2>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '16px 16px calc(92px + env(safe-area-inset-bottom,0px))' }}>
+
+        {/* Team message from Ethan */}
+        {teamData.message_active && teamData.message && (
+          <div style={{ background: t.bg, border: `1px solid ${t.color}40`, borderRadius: 14, padding: '14px 16px', marginBottom: 10, animation: 'fadeUp 0.3s ease both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <MessageSquare size={14} color={t.color} strokeWidth={2} />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Message from Ethan</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 14, color: C.text, lineHeight: 1.5 }}>{teamData.message}</p>
+          </div>
+        )}
+
+        {/* Cheer video */}
+        <SecLabel>Team Cheer</SecLabel>
+        <Tap onClick={openCheer} style={{ opacity: teamData.cheer_url ? 1 : 0.4, pointerEvents: teamData.cheer_url ? 'auto' : 'none' }}>
+          <SCard style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: t.bg, border: `1px solid ${t.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Play size={22} color={t.color} strokeWidth={2} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: '0 0 2px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label} Team Cheer</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{teamData.cheer_url ? 'Tap to watch on Google Drive' : 'Video not uploaded yet'}</p>
+            </div>
+            <ChevronLeft size={18} color={C.muted} style={{ transform: 'rotate(180deg)', flexShrink: 0 }} />
+          </SCard>
+        </Tap>
+
+        {/* Today's rotations */}
+        {myRotations.length > 0 && (
+          <>
+            <SecLabel>Today's Rotations</SecLabel>
+            {myRotations.map((r, i) => (
+              <SCard key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: t.bg, border: `1px solid ${t.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: t.color, fontFamily: "'Oswald',sans-serif" }}>{r.rotNum}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>{r.location}</p>
+                  {r.time && <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>{dispTime(r.time)}</p>}
+                </div>
+              </SCard>
+            ))}
+          </>
+        )}
+
+        {/* Points log */}
+        <SecLabel>Points Log</SecLabel>
+        {teamData.points_log && teamData.points_log.length > 0 ? (
+          [...teamData.points_log].reverse().map((entry, i) => (
+            <SCard key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ minWidth: 44, textAlign: 'center' }}>
+                <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: entry.amount > 0 ? t.color : '#FF4D4D', fontFamily: "'Oswald',sans-serif" }}>
+                  {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
+                </p>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>{entry.reason || '—'}</p>
+                {entry.timestamp && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Clock size={11} color={C.muted} strokeWidth={2} />
+                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{formatTimestamp(entry.timestamp)}</p>
+                  </div>
+                )}
+              </div>
+            </SCard>
+          ))
+        ) : (
+          <SCard>
+            <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: 'center' }}>No points logged yet</p>
+          </SCard>
+        )}
+
+        {/* Free time */}
+        <SecLabel>Free Time Activities</SecLabel>
+        {FREE_TIME.map((item, i) => (
+          <SCard key={i} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</span>
+            <div>
+              <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.name}</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{item.note}</p>
+            </div>
+          </SCard>
         ))}
+
       </div>
     </div>
   )
@@ -636,11 +777,8 @@ function MapPage() {
   }
 
   const handleTouchStart = (e) => {
-    if (e.touches.length === 1) {
-      lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    } else if (e.touches.length === 2) {
-      lastDistRef.current = getTouchDist(e.touches)
-    }
+    if (e.touches.length === 1) lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    else if (e.touches.length === 2) lastDistRef.current = getTouchDist(e.touches)
   }
 
   const handleTouchMove = (e) => {
@@ -660,10 +798,7 @@ function MapPage() {
   const handleTouchEnd = () => {
     lastTouchRef.current = null
     lastDistRef.current = null
-    if (scale <= 1.05) {
-      setScale(1)
-      setOffset({ x: 0, y: 0 })
-    }
+    if (scale <= 1.05) { setScale(1); setOffset({ x: 0, y: 0 }) }
   }
 
   const handleDoubleTap = () => {
@@ -679,27 +814,8 @@ function MapPage() {
       </div>
       <div style={{ padding: '16px 16px calc(92px + env(safe-area-inset-bottom,0px))' }}>
         <SCard style={{ padding: 8, overflow: 'hidden' }}>
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onDoubleClick={handleDoubleTap}
-            style={{ overflow: 'hidden', borderRadius: 8, touchAction: 'none' }}
-          >
-            <img
-              src="/camp-map.jpg"
-              alt="Camp grounds map"
-              draggable={false}
-              style={{
-                width: '100%',
-                display: 'block',
-                borderRadius: 8,
-                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                transformOrigin: 'center center',
-                transition: scale === 1 ? 'transform 0.3s ease' : 'none',
-                userSelect: 'none',
-              }}
-            />
+          <div onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onDoubleClick={handleDoubleTap} style={{ overflow: 'hidden', borderRadius: 8, touchAction: 'none' }}>
+            <img src="/camp-map.jpg" alt="Camp grounds map" draggable={false} style={{ width: '100%', display: 'block', borderRadius: 8, transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`, transformOrigin: 'center center', transition: scale === 1 ? 'transform 0.3s ease' : 'none', userSelect: 'none' }} />
           </div>
         </SCard>
       </div>
@@ -774,37 +890,16 @@ function ContactsPage({ onBack }) {
   )
 }
 
-// ─── FREE TIME ────────────────────────────────────────────────────────────────
-function FreeTimePage({ onBack }) {
-  const C = useC()
-  return (
-    <div>
-      <BackHeader title="Free Time" onBack={onBack} />
-      <div style={{ padding: '16px 16px calc(92px + env(safe-area-inset-bottom,0px))' }}>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: C.muted }}>Activities available during unstructured time</p>
-        {FREE_TIME.map((item, i) => (
-          <SCard key={i} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <span style={{ fontSize: 26, flexShrink: 0 }}>{item.icon}</span>
-            <div>
-              <p style={{ margin: '0 0 2px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.name}</p>
-              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{item.note}</p>
-            </div>
-          </SCard>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ─── SEARCH OVERLAY ───────────────────────────────────────────────────────────
 const SEARCHABLE = [
-  ...FAQ.map(f         => ({ type: 'FAQ',       title: f.q,         body: f.a,                   page: 'faq',       secondary: true  })),
-  ...RULES.map((r, i)  => ({ type: 'Rule',      title: `Rule ${i+1}`, body: r,                   page: 'rules',     secondary: true  })),
-  ...CONTACTS.map(c    => ({ type: 'Contact',   title: c.name,      body: `${c.role} — ${c.note}`, page: 'contacts',  secondary: true  })),
-  ...FREE_TIME.map(f   => ({ type: 'Free Time', title: f.name,      body: f.note,                page: 'freetime',  secondary: true  })),
+  ...FAQ.map(f         => ({ type: 'FAQ',       title: f.q,           body: f.a,                     page: 'faq',      secondary: true  })),
+  ...RULES.map((r, i)  => ({ type: 'Rule',      title: `Rule ${i+1}`, body: r,                       page: 'rules',    secondary: true  })),
+  ...CONTACTS.map(c    => ({ type: 'Contact',   title: c.name,        body: `${c.role} — ${c.note}`, page: 'contacts', secondary: true  })),
+  ...FREE_TIME.map(f   => ({ type: 'Free Time', title: f.name,        body: f.note,                  page: 'teamhub',  secondary: true  })),
   { type: 'Page', title: 'Schedule', body: 'Daily timeline rotations activities', page: 'schedule',   secondary: false },
   { type: 'Page', title: 'Map',      body: 'Camp layout directions areas',        page: 'map',        secondary: false },
   { type: 'Page', title: 'Camp Cup', body: 'Team scores Red Yellow Green Blue',   page: 'scoreboard', secondary: false },
+  { type: 'Page', title: 'Team Hub', body: 'Cheer video points log rotations message', page: 'teamhub', secondary: true },
 ]
 
 function SearchOverlay({ onClose, nav }) {
@@ -818,13 +913,7 @@ function SearchOverlay({ onClose, nav }) {
       <div style={{ padding: 'calc(14px + env(safe-area-inset-top,0px)) 16px 12px', display: 'flex', gap: 10, alignItems: 'center', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Search size={16} color={C.muted} strokeWidth={2} />
-          <input
-            autoFocus
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Search everything..."
-            style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 0', fontSize: 16, color: C.text, outline: 'none', fontFamily: 'inherit' }}
-          />
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search everything..." style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 0', fontSize: 16, color: C.text, outline: 'none', fontFamily: 'inherit' }} />
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 15, fontWeight: 600, fontFamily: 'inherit' }}>Cancel</button>
       </div>
@@ -848,10 +937,10 @@ function SearchOverlay({ onClose, nav }) {
 
 // ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'home',        label: 'Home',     isLogo: true  },
-  { id: 'schedule',    label: 'Schedule', Icon: Calendar },
-  { id: 'scoreboard',  label: 'Camp Cup', Icon: Trophy   },
-  { id: 'map',         label: 'Map',      Icon: Map      },
+  { id: 'home',       label: 'Home',     isLogo: true  },
+  { id: 'schedule',   label: 'Schedule', Icon: Calendar },
+  { id: 'scoreboard', label: 'Camp Cup', Icon: Trophy   },
+  { id: 'map',        label: 'Map',      Icon: Map      },
 ]
 
 function BottomNav({ page, nav }) {
@@ -906,55 +995,184 @@ function AdminLogin() {
 function AdminDashboard({ allScores, updateScore, announcement }) {
   const [draft, setDraft] = useState(announcement || '')
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('scores')
   useEffect(() => setDraft(announcement || ''), [announcement])
 
   const post  = async () => { setSaving(true); await setDoc(doc(db, 'announcement', 'current'), { text: draft, active: draft.trim().length > 0 }); setSaving(false) }
   const clear = async () => { setDraft(''); await setDoc(doc(db, 'announcement', 'current'), { text: '', active: false }) }
 
-  const ScorePanel = ({ campKey, campName }) => {
-    const s = allScores[campKey] || DEFAULT_SCORES
-    return (
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ margin: '20px 0 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>{campName} Scores</p>
-        {[...Object.entries(s)].sort(([, a], [, b]) => b - a).map(([k, score]) => {
-          const t = TEAM[k]
-          return (
-            <div key={k} style={{ background: '#172018', borderRadius: 12, padding: '10px 14px', marginBottom: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#F0EDDF', flex: 1, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => updateScore(campKey, k, -10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#8FB8A8', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>-</button>
-                <span style={{ fontSize: 24, fontWeight: 700, color: '#F0EDDF', minWidth: 46, textAlign: 'center', fontFamily: "'Oswald',sans-serif" }}>{score}</span>
-                <button onClick={() => updateScore(campKey, k, 10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(224,92,26,0.40)', background: 'rgba(224,92,26,0.15)', color: '#E05C1A', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>+</button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
+  const ADMIN_TABS = ['scores', 'teams', 'announce']
 
   return (
     <div style={{ padding: '16px 16px 40px' }}>
-      <ScorePanel campKey="west1" campName="West One" />
-      <ScorePanel campKey="west2" campName="West Two" />
-      <p style={{ margin: '20px 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>Announcement</p>
-      <p style={{ fontSize: 12, color: '#8FB8A8', marginBottom: 10 }}>Shows as a banner on every leader home screen.</p>
-      {announcement && (
-        <div style={{ background: 'rgba(200,224,32,0.12)', border: '1px solid rgba(200,224,32,0.35)', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
-          <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#C8E020', fontFamily: "'Oswald',sans-serif" }}>Live</p>
-          <p style={{ margin: 0, fontSize: 13, color: '#F0EDDF' }}>{announcement}</p>
+      {/* Admin tab bar */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {ADMIN_TABS.map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: `1px solid ${activeTab === tab ? '#E05C1A' : 'rgba(255,255,255,0.08)'}`, background: activeTab === tab ? 'rgba(224,92,26,0.15)' : 'transparent', color: activeTab === tab ? '#E05C1A' : '#8FB8A8', fontWeight: activeTab === tab ? 700 : 400, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'scores' && (
+        <>
+          {['west1', 'west2'].map(campKey => (
+            <div key={campKey} style={{ marginBottom: 20 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>{campKey === 'west1' ? 'West One' : 'West Two'} Scores</p>
+              {[...Object.entries(allScores[campKey] || DEFAULT_SCORES)].sort(([, a], [, b]) => b - a).map(([k, score]) => {
+                const t = TEAM[k]
+                return (
+                  <div key={k} style={{ background: '#172018', borderRadius: 12, padding: '10px 14px', marginBottom: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#F0EDDF', flex: 1, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => updateScore(campKey, k, -10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#8FB8A8', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>-</button>
+                      <span style={{ fontSize: 24, fontWeight: 700, color: '#F0EDDF', minWidth: 46, textAlign: 'center', fontFamily: "'Oswald',sans-serif" }}>{score}</span>
+                      <button onClick={() => updateScore(campKey, k, 10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(224,92,26,0.40)', background: 'rgba(224,92,26,0.15)', color: '#E05C1A', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>+</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </>
+      )}
+
+      {activeTab === 'teams' && <TeamAdminPanel />}
+
+      {activeTab === 'announce' && (
+        <>
+          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>Global Announcement</p>
+          <p style={{ fontSize: 12, color: '#8FB8A8', marginBottom: 10 }}>Shows as a banner on every leader home screen.</p>
+          {announcement && (
+            <div style={{ background: 'rgba(200,224,32,0.12)', border: '1px solid rgba(200,224,32,0.35)', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+              <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#C8E020', fontFamily: "'Oswald',sans-serif" }}>Live</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#F0EDDF' }}>{announcement}</p>
+            </div>
+          )}
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type an announcement for all leaders..." style={{ width: '100%', background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 80, marginBottom: 10 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={post} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#E05C1A', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {saving ? 'Saving...' : 'Post'}
+            </button>
+            {announcement && (
+              <button onClick={clear} style={{ padding: '11px 16px', borderRadius: 10, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', color: '#8FB8A8', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── TEAM ADMIN PANEL ─────────────────────────────────────────────────────────
+function TeamAdminPanel() {
+  const [selectedTeam, setSelectedTeam] = useState('red')
+  const [teamData, setTeamData]         = useState(DEFAULT_TEAM_DATA)
+  const [cheerUrl, setCheerUrl]         = useState('')
+  const [message, setMessage]           = useState('')
+  const [msgActive, setMsgActive]       = useState(false)
+  const [logAmount, setLogAmount]       = useState('10')
+  const [logReason, setLogReason]       = useState('')
+  const [saving, setSaving]             = useState(false)
+
+  useEffect(() => {
+    const ref = doc(db, 'teams', selectedTeam)
+    return onSnapshot(ref, snap => {
+      const d = snap.exists() ? { ...DEFAULT_TEAM_DATA, ...snap.data() } : DEFAULT_TEAM_DATA
+      setTeamData(d)
+      setCheerUrl(d.cheer_url || '')
+      setMessage(d.message || '')
+      setMsgActive(d.message_active || false)
+    })
+  }, [selectedTeam])
+
+  const saveCheerUrl = async () => {
+    setSaving(true)
+    const ref = doc(db, 'teams', selectedTeam)
+    const snap = await getDoc(ref)
+    if (snap.exists()) await updateDoc(ref, { cheer_url: cheerUrl })
+    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, cheer_url: cheerUrl })
+    setSaving(false)
+  }
+
+  const saveMessage = async () => {
+    setSaving(true)
+    const ref = doc(db, 'teams', selectedTeam)
+    const snap = await getDoc(ref)
+    if (snap.exists()) await updateDoc(ref, { message, message_active: msgActive })
+    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, message, message_active: msgActive })
+    setSaving(false)
+  }
+
+  const addPointsLog = async () => {
+    const amount = parseInt(logAmount)
+    if (!logReason.trim() || isNaN(amount)) return
+    setSaving(true)
+    const ref = doc(db, 'teams', selectedTeam)
+    const entry = { amount, reason: logReason.trim(), timestamp: new Date() }
+    const snap = await getDoc(ref)
+    if (snap.exists()) await updateDoc(ref, { points_log: arrayUnion(entry) })
+    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, points_log: [entry] })
+    setLogReason('')
+    setSaving(false)
+  }
+
+  const t = TEAM[selectedTeam]
+
+  return (
+    <div>
+      {/* Team selector */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 20 }}>
+        {Object.entries(TEAM).map(([key, tm]) => (
+          <button key={key} onClick={() => setSelectedTeam(key)} style={{ padding: '10px 0', borderRadius: 10, border: `1.5px solid ${selectedTeam === key ? tm.color : 'rgba(255,255,255,0.08)'}`, background: selectedTeam === key ? tm.bg : 'transparent', color: selectedTeam === key ? tm.color : '#8FB8A8', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif', letterSpacing: '0.06em", textTransform: 'uppercase' }}>
+            {tm.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Cheer URL */}
+      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Cheer Video URL</p>
+      <input value={cheerUrl} onChange={e => setCheerUrl(e.target.value)} placeholder="Paste Google Drive share link..." style={{ display: 'block', width: '100%', marginBottom: 8, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
+      <button onClick={saveCheerUrl} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 20 }}>
+        Save URL
+      </button>
+
+      {/* Team message */}
+      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Team Message</p>
+      <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={`Message for ${t.label} team leaders...`} style={{ width: '100%', background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 72, marginBottom: 8 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <button onClick={() => setMsgActive(v => !v)} style={{ width: 40, height: 24, borderRadius: 12, background: msgActive ? t.color : 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+          <div style={{ position: 'absolute', top: 3, left: msgActive ? 19 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+        </button>
+        <span style={{ fontSize: 13, color: msgActive ? t.color : '#8FB8A8', fontWeight: 600 }}>{msgActive ? 'Visible to leaders' : 'Hidden'}</span>
+      </div>
+      <button onClick={saveMessage} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 20 }}>
+        {saving ? 'Saving...' : 'Save Message'}
+      </button>
+
+      {/* Points log entry */}
+      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Log Points</p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <input type="number" value={logAmount} onChange={e => setLogAmount(e.target.value)} placeholder="Pts" style={{ width: 72, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 12px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
+        <input value={logReason} onChange={e => setLogReason(e.target.value)} placeholder="Reason (e.g. Field Games)" style={{ flex: 1, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
+      </div>
+      <button onClick={addPointsLog} disabled={saving || !logReason.trim()} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', opacity: logReason.trim() ? 1 : 0.4 }}>
+        Add to Log
+      </button>
+
+      {/* Recent log preview */}
+      {teamData.points_log && teamData.points_log.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#8FB8A8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald',sans-serif" }}>Recent entries</p>
+          {[...teamData.points_log].reverse().slice(0, 3).map((entry, i) => (
+            <div key={i} style={{ background: '#172018', borderRadius: 10, padding: '8px 12px', marginBottom: 6, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: entry.amount > 0 ? t.color : '#FF4D4D', minWidth: 36, fontFamily: "'Oswald',sans-serif" }}>{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</span>
+              <span style={{ fontSize: 13, color: '#F0EDDF', flex: 1 }}>{entry.reason}</span>
+            </div>
+          ))}
         </div>
       )}
-      <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type an announcement for all leaders..." style={{ width: '100%', background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 80, marginBottom: 10 }} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={post} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#E05C1A', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          {saving ? 'Saving...' : 'Post'}
-        </button>
-        {announcement && (
-          <button onClick={clear} style={{ padding: '11px 16px', borderRadius: 10, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', color: '#8FB8A8', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
-        )}
-      </div>
     </div>
   )
 }
@@ -985,7 +1203,7 @@ export default function CampHub() {
 
   useEffect(() => {
     const init = async k => {
-      const ref  = doc(db, 'scores', k)
+      const ref = doc(db, 'scores', k)
       const snap = await getDoc(ref)
       if (!snap.exists()) await setDoc(ref, DEFAULT_SCORES)
     }
@@ -1015,7 +1233,6 @@ export default function CampHub() {
   }, [])
 
   const selectTeam = k => { localStorage.setItem('leaderTeam', k); setMyTeam(k) }
-
   const campInfo      = getCampInfo(now)
   const currentScores = allScores[campInfo ? campInfo.campKey : 'west1']
 
@@ -1034,7 +1251,6 @@ export default function CampHub() {
     await setDoc(doc(db, 'scores', campKey), { ...cur, [team]: Math.max(0, (cur[team] || 0) + delta) })
   }
 
-  // Splash
   if (showSplash && !isAdmin) {
     return (
       <ThemeCtx.Provider value={DARK}>
@@ -1043,7 +1259,6 @@ export default function CampHub() {
     )
   }
 
-  // Team picker
   if (!myTeam && !isAdmin) {
     return (
       <ThemeCtx.Provider value={DARK}>
@@ -1052,7 +1267,6 @@ export default function CampHub() {
     )
   }
 
-  // Admin view
   if (isAdmin) {
     if (!authChecked) return <div style={{ color: '#8FB8A8', textAlign: 'center', padding: 40 }}>Loading...</div>
     if (!user) return <AdminLogin />
@@ -1072,21 +1286,12 @@ export default function CampHub() {
     )
   }
 
-  // Leader view
   return (
     <ThemeCtx.Provider value={DARK}>
       <div style={{ background: DARK.bg, minHeight: '100vh', color: DARK.text, fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", position: 'relative', overflow: 'hidden' }}>
 
-        {/* Header — home page only */}
         {page === 'home' && (
-          <div style={{
-            padding: `calc(14px + env(safe-area-inset-top,0px)) 16px 14px`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderBottom: `1px solid ${DARK.border}`,
-            background: DARK.bg,
-            position: 'sticky', top: 0, zIndex: 10,
-            backgroundImage: `repeating-linear-gradient(-45deg,${DARK.headerStripe} 0px,${DARK.headerStripe} 1px,transparent 1px,transparent 14px)`,
-          }}>
+          <div style={{ padding: `calc(14px + env(safe-area-inset-top,0px)) 16px 14px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${DARK.border}`, background: DARK.bg, position: 'sticky', top: 0, zIndex: 10, backgroundImage: `repeating-linear-gradient(-45deg,${DARK.headerStripe} 0px,${DARK.headerStripe} 1px,transparent 1px,transparent 14px)` }}>
             <div>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: DARK.brand, fontFamily: "'Oswald',sans-serif", lineHeight: 1 }}>NW Kids</p>
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: DARK.text, fontFamily: "'Oswald',sans-serif", lineHeight: 1.1 }}>Summer Camp</h1>
@@ -1105,22 +1310,21 @@ export default function CampHub() {
           </div>
         )}
 
-        {/* Page content */}
         <div key={page} style={{ animation: `${animClass} 260ms cubic-bezier(0.2,0,0,1) both` }}>
-          {page === 'home'        && <HomeScreen    campInfo={campInfo} now={now} nav={nav} announcement={announcement} myTeam={myTeam} />}
-          {page === 'schedule'    && <SchedulePage  campInfo={campInfo} now={now} myTeam={myTeam} />}
-          {page === 'scoreboard'  && <ScoreboardPage scores={currentScores} />}
-          {page === 'map'         && <MapPage />}
-          {page === 'faq'         && <FAQPage       onBack={goBack} />}
-          {page === 'rules'       && <RulesPage     onBack={goBack} />}
-          {page === 'contacts'    && <ContactsPage  onBack={goBack} />}
-          {page === 'freetime'    && <FreeTimePage  onBack={goBack} />}
+          {page === 'home'       && <HomeScreen    campInfo={campInfo} now={now} nav={nav} announcement={announcement} myTeam={myTeam} />}
+          {page === 'schedule'   && <SchedulePage  campInfo={campInfo} now={now} myTeam={myTeam} />}
+          {page === 'scoreboard' && <ScoreboardPage scores={currentScores} />}
+          {page === 'map'        && <MapPage />}
+          {page === 'teamhub'    && <TeamHubPage   myTeam={myTeam} campInfo={campInfo} now={now} onBack={goBack} />}
+          {page === 'faq'        && <FAQPage        onBack={goBack} />}
+          {page === 'rules'      && <RulesPage      onBack={goBack} />}
+          {page === 'contacts'   && <ContactsPage   onBack={goBack} />}
         </div>
 
         <BottomNav page={page} nav={nav} />
 
-        {searchOpen   && <SearchOverlay   onClose={() => setSearchOpen(false)}    nav={(p, s) => { nav(p, s); setSearchOpen(false) }} />}
-        {changingTeam && <TeamChangeModal myTeam={myTeam} onSelect={selectTeam}   onClose={() => setChangingTeam(false)} />}
+        {searchOpen   && <SearchOverlay   onClose={() => setSearchOpen(false)} nav={(p, s) => { nav(p, s); setSearchOpen(false) }} />}
+        {changingTeam && <TeamChangeModal myTeam={myTeam} onSelect={selectTeam} onClose={() => setChangingTeam(false)} />}
       </div>
     </ThemeCtx.Provider>
   )
