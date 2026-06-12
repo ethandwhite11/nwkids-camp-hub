@@ -644,35 +644,84 @@ function ScoreboardPage({ scores }) {
 // ─── MAP ──────────────────────────────────────────────────────────────────────
 function MapPage() {
   const C = useC()
+  const [scale, setScale] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const lastTouchRef = useRef(null)
+  const lastDistRef = useRef(null)
+
+  const getTouchDist = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    } else if (e.touches.length === 2) {
+      lastDistRef.current = getTouchDist(e.touches)
+    }
+  }
+
+  const handleTouchMove = (e) => {
+    e.preventDefault()
+    if (e.touches.length === 1 && lastTouchRef.current) {
+      const dx = e.touches[0].clientX - lastTouchRef.current.x
+      const dy = e.touches[0].clientY - lastTouchRef.current.y
+      setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }))
+      lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    } else if (e.touches.length === 2 && lastDistRef.current !== null) {
+      const newDist = getTouchDist(e.touches)
+      setScale(prev => Math.min(Math.max(prev * (newDist / lastDistRef.current), 1), 4))
+      lastDistRef.current = newDist
+    }
+  }
+
+  const handleTouchEnd = () => {
+    lastTouchRef.current = null
+    lastDistRef.current = null
+    if (scale <= 1.05) {
+      setScale(1)
+      setOffset({ x: 0, y: 0 })
+    }
+  }
+
+  const handleDoubleTap = () => {
+    if (scale > 1) { setScale(1); setOffset({ x: 0, y: 0 }) }
+    else setScale(2)
+  }
+
   return (
     <div>
       <div style={{ padding: 'calc(14px + env(safe-area-inset-top,0px)) 16px 12px', borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.text, fontFamily: "'Oswald',sans-serif" }}>Camp Map</h2>
+        <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>Pinch to zoom · Double-tap to reset</p>
       </div>
       <div style={{ padding: '16px 16px calc(92px + env(safe-area-inset-bottom,0px))' }}>
-        <SCard style={{ padding: 16 }}>
-          <svg viewBox="0 0 320 260" style={{ width: '100%', height: 'auto' }}>
-            <rect x="8" y="8" width="145" height="75" rx="8" fill="rgba(82,204,150,0.12)" stroke="#52CC96" strokeWidth="1.5" />
-            <text x="80" y="40" textAnchor="middle" fill="#52CC96" fontSize="11" fontWeight="bold" fontFamily="system-ui">Main Lodge</text>
-            <text x="80" y="58" textAnchor="middle" fill="#7A9E8E" fontSize="9" fontFamily="system-ui">Chapel · Dining · Office</text>
-            <rect x="167" y="8" width="145" height="75" rx="8" fill="rgba(74,144,226,0.12)" stroke="#4A90E2" strokeWidth="1.5" />
-            <text x="239" y="40" textAnchor="middle" fill="#4A90E2" fontSize="11" fontWeight="bold" fontFamily="system-ui">Lake Area</text>
-            <text x="239" y="58" textAnchor="middle" fill="#7A9E8E" fontSize="9" fontFamily="system-ui">Swimming · Waterfront</text>
-            <rect x="8" y="100" width="95" height="68" rx="8" fill="rgba(224,92,26,0.12)" stroke="#E05C1A" strokeWidth="1.5" />
-            <text x="55" y="132" textAnchor="middle" fill="#E05C1A" fontSize="10" fontWeight="bold" fontFamily="system-ui">Field Games</text>
-            <text x="55" y="150" textAnchor="middle" fill="#7A9E8E" fontSize="8" fontFamily="system-ui">Sports fields</text>
-            <rect x="113" y="100" width="95" height="68" rx="8" fill="rgba(200,224,32,0.12)" stroke="#C8E020" strokeWidth="1.5" />
-            <text x="160" y="132" textAnchor="middle" fill="#C8E020" fontSize="10" fontWeight="bold" fontFamily="system-ui">Snack Shack</text>
-            <text x="160" y="150" textAnchor="middle" fill="#7A9E8E" fontSize="8" fontFamily="system-ui">Refreshments</text>
-            <rect x="218" y="100" width="94" height="68" rx="8" fill="rgba(255,77,77,0.12)" stroke="#FF4D4D" strokeWidth="1.5" />
-            <text x="265" y="132" textAnchor="middle" fill="#FF4D4D" fontSize="10" fontWeight="bold" fontFamily="system-ui">Cabins</text>
-            <text x="265" y="150" textAnchor="middle" fill="#7A9E8E" fontSize="8" fontFamily="system-ui">A · B · C · D</text>
-            <rect x="8" y="185" width="304" height="62" rx="8" fill="rgba(122,158,142,0.1)" stroke="rgba(122,158,142,0.3)" strokeWidth="1.5" />
-            <text x="160" y="213" textAnchor="middle" fill="#9BBFAF" fontSize="10" fontWeight="bold" fontFamily="system-ui">Rec Hall</text>
-            <text x="160" y="230" textAnchor="middle" fill="#7A9E8E" fontSize="8" fontFamily="system-ui">Ping Pong · Board Games · Indoor Activities</text>
-          </svg>
+        <SCard style={{ padding: 8, overflow: 'hidden' }}>
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={handleDoubleTap}
+            style={{ overflow: 'hidden', borderRadius: 8, touchAction: 'none' }}
+          >
+            <img
+              src="/camp-map.jpg"
+              alt="Camp grounds map"
+              draggable={false}
+              style={{
+                width: '100%',
+                display: 'block',
+                borderRadius: 8,
+                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                transformOrigin: 'center center',
+                transition: scale === 1 ? 'transform 0.3s ease' : 'none',
+                userSelect: 'none',
+              }}
+            />
+          </div>
         </SCard>
-        <p style={{ fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 4 }}>Placeholder — replace with actual camp map image</p>
       </div>
     </div>
   )
