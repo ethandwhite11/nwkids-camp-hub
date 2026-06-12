@@ -1,8 +1,8 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react'
 import { db, auth } from './firebase'
-import { doc, onSnapshot, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, getDoc, updateDoc } from 'firebase/firestore'
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
-import { ChevronLeft, Search, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Users, Play, MessageSquare, Clock } from 'lucide-react'
+import { ChevronLeft, Search, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Users, Play, MessageSquare } from 'lucide-react'
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const DARK = {
@@ -42,7 +42,6 @@ const DEFAULT_TEAM_DATA = {
   cheer_url: '',
   message: '',
   message_active: false,
-  points_log: [],
 }
 
 const SCHEDULE = {
@@ -192,12 +191,6 @@ function getCurrentActivity(sched, now) {
     return { current: null, next: sched[0], minUntil: parseTime(sched[0].time) - tm, duration: 0 }
   }
   return { current: sched[sched.length - 1], next: null, minIn: 0, duration: 60 }
-}
-
-function formatTimestamp(ts) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 // ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
@@ -531,7 +524,7 @@ function HomeScreen({ campInfo, now, nav, announcement, myTeam }) {
 }
 
 // ─── TEAM HUB PAGE ────────────────────────────────────────────────────────────
-function TeamHubPage({ myTeam, campInfo, now, onBack }) {
+function TeamHubPage({ myTeam, campInfo, now, onBack, teamScore }) {
   const C = useC()
   const t = TEAM[myTeam]
   const [teamData, setTeamData] = useState(DEFAULT_TEAM_DATA)
@@ -622,32 +615,17 @@ function TeamHubPage({ myTeam, campInfo, now, onBack }) {
           </>
         )}
 
-        {/* Points log */}
-        <SecLabel>Points Log</SecLabel>
-        {teamData.points_log && teamData.points_log.length > 0 ? (
-          [...teamData.points_log].reverse().map((entry, i) => (
-            <SCard key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ minWidth: 44, textAlign: 'center' }}>
-                <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: entry.amount > 0 ? t.color : '#FF4D4D', fontFamily: "'Oswald',sans-serif" }}>
-                  {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
-                </p>
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>{entry.reason || '—'}</p>
-                {entry.timestamp && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Clock size={11} color={C.muted} strokeWidth={2} />
-                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{formatTimestamp(entry.timestamp)}</p>
-                  </div>
-                )}
-              </div>
-            </SCard>
-          ))
-        ) : (
-          <SCard>
-            <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: 'center' }}>No points logged yet</p>
-          </SCard>
-        )}
+        {/* Camp Cup score */}
+        <SecLabel>Camp Cup Score</SecLabel>
+        <SCard style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: t.bg, border: `1px solid ${t.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Trophy size={22} color={t.color} strokeWidth={1.75} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald',sans-serif" }}>{t.label} Team</p>
+            <p style={{ margin: 0, fontSize: 38, fontWeight: 700, color: t.color, fontFamily: "'Oswald',sans-serif", lineHeight: 1 }}>{teamScore}</p>
+          </div>
+        </SCard>
 
         {/* Free time */}
         <SecLabel>Free Time Activities</SecLabel>
@@ -669,7 +647,7 @@ function TeamHubPage({ myTeam, campInfo, now, onBack }) {
 // ─── SCHEDULE PAGE ────────────────────────────────────────────────────────────
 function SchedulePage({ campInfo, now, myTeam }) {
   const C = useC()
-  const [day, setDay] = useState(campInfo ? campInfo.day : 2)
+  const [day, setDay] = useState(campInfo ? campInfo.day : 1)
   const sched = getSchedule(day)
   const tm = now.getHours() * 60 + now.getMinutes()
   const rots = (day === 2 || day === 3) ? ROTATIONS[day] : null
@@ -993,21 +971,18 @@ function AdminLogin() {
 }
 
 function AdminDashboard({ allScores, updateScore, announcement }) {
-  const [draft, setDraft] = useState(announcement || '')
-  const [saving, setSaving] = useState(false)
+  const [draft,     setDraft]     = useState(announcement || '')
+  const [saving,    setSaving]    = useState(false)
   const [activeTab, setActiveTab] = useState('scores')
   useEffect(() => setDraft(announcement || ''), [announcement])
 
   const post  = async () => { setSaving(true); await setDoc(doc(db, 'announcement', 'current'), { text: draft, active: draft.trim().length > 0 }); setSaving(false) }
   const clear = async () => { setDraft(''); await setDoc(doc(db, 'announcement', 'current'), { text: '', active: false }) }
 
-  const ADMIN_TABS = ['scores', 'teams', 'announce']
-
   return (
     <div style={{ padding: '16px 16px 40px' }}>
-      {/* Admin tab bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-        {ADMIN_TABS.map(tab => (
+        {['scores', 'teams', 'announce'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: `1px solid ${activeTab === tab ? '#E05C1A' : 'rgba(255,255,255,0.08)'}`, background: activeTab === tab ? 'rgba(224,92,26,0.15)' : 'transparent', color: activeTab === tab ? '#E05C1A' : '#8FB8A8', fontWeight: activeTab === tab ? 700 : 400, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             {tab}
           </button>
@@ -1015,30 +990,12 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
       </div>
 
       {activeTab === 'scores' && (
-        <>
-          {['west1', 'west2'].map(campKey => (
-            <div key={campKey} style={{ marginBottom: 20 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>{campKey === 'west1' ? 'West One' : 'West Two'} Scores</p>
-              {[...Object.entries(allScores[campKey] || DEFAULT_SCORES)].sort(([, a], [, b]) => b - a).map(([k, score]) => {
-                const t = TEAM[k]
-                return (
-                  <div key={k} style={{ background: '#172018', borderRadius: 12, padding: '10px 14px', marginBottom: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#F0EDDF', flex: 1, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => updateScore(campKey, k, -10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#8FB8A8', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>-</button>
-                      <span style={{ fontSize: 24, fontWeight: 700, color: '#F0EDDF', minWidth: 46, textAlign: 'center', fontFamily: "'Oswald',sans-serif" }}>{score}</span>
-                      <button onClick={() => updateScore(campKey, k, 10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(224,92,26,0.40)', background: 'rgba(224,92,26,0.15)', color: '#E05C1A', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>+</button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-        </>
+        <ScoreAdminPanel allScores={allScores} updateScore={updateScore} />
       )}
 
-      {activeTab === 'teams' && <TeamAdminPanel />}
+      {activeTab === 'teams' && (
+        <TeamAdminPanel allScores={allScores} updateScore={updateScore} />
+      )}
 
       {activeTab === 'announce' && (
         <>
@@ -1065,21 +1022,99 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
   )
 }
 
+// ─── SCORE ADMIN PANEL ────────────────────────────────────────────────────────
+function ScoreControls({ teamKey, campKey, score, updateScore }) {
+  const t = TEAM[teamKey]
+  const [isSubtract, setIsSubtract] = useState(false)
+  const [custom,     setCustom]     = useState('')
+  const QUICK = [1, 5, 10, 25]
+
+  const apply = (amt) => {
+    const delta = isSubtract ? -amt : amt
+    updateScore(campKey, teamKey, delta)
+  }
+
+  const applyCustom = () => {
+    const amt = parseInt(custom)
+    if (!isNaN(amt) && amt > 0) { apply(amt); setCustom('') }
+  }
+
+  return (
+    <div style={{ background: '#172018', borderRadius: 14, padding: '14px 16px', marginBottom: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Team label + score + toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#F0EDDF', flex: 1, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}</p>
+        <span style={{ fontSize: 28, fontWeight: 700, color: t.color, fontFamily: "'Oswald',sans-serif", minWidth: 44, textAlign: 'right' }}>{score}</span>
+        {/* Add / Subtract toggle */}
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+          <button onClick={() => setIsSubtract(false)} style={{ padding: '5px 10px', background: !isSubtract ? 'rgba(82,204,150,0.2)' : 'transparent', color: !isSubtract ? '#52CC96' : '#8FB8A8', border: 'none', cursor: 'pointer', fontFamily: "'Oswald',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '0.04em' }}>+ Add</button>
+          <button onClick={() => setIsSubtract(true)}  style={{ padding: '5px 10px', background: isSubtract  ? 'rgba(255,77,77,0.2)'   : 'transparent', color: isSubtract  ? '#FF4D4D' : '#8FB8A8', border: 'none', cursor: 'pointer', fontFamily: "'Oswald',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: '0.04em' }}>− Sub</button>
+        </div>
+      </div>
+
+      {/* Quick buttons */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        {QUICK.map(v => (
+          <button key={v} onClick={() => apply(v)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: `1px solid ${isSubtract ? 'rgba(255,77,77,0.35)' : `${t.color}50`}`, background: isSubtract ? 'rgba(255,77,77,0.1)' : t.bg, color: isSubtract ? '#FF4D4D' : t.color, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'Oswald',sans-serif" }}>
+            {isSubtract ? `-${v}` : `+${v}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Freeform input */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          type="number"
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && applyCustom()}
+          placeholder="Custom amount..."
+          style={{ flex: 1, background: '#101813', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '9px 12px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }}
+        />
+        <button onClick={applyCustom} style={{ padding: '9px 14px', borderRadius: 9, background: isSubtract ? 'rgba(255,77,77,0.15)' : 'rgba(224,92,26,0.15)', border: `1px solid ${isSubtract ? 'rgba(255,77,77,0.35)' : 'rgba(224,92,26,0.40)'}`, color: isSubtract ? '#FF4D4D' : '#E05C1A', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'Oswald',sans-serif" }}>
+          Go
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ScoreAdminPanel({ allScores, updateScore }) {
+  const [campKey, setCampKey] = useState('west1')
+  const scores = allScores[campKey] || DEFAULT_SCORES
+  const sorted = [...Object.entries(scores)].sort(([, a], [, b]) => b - a)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {['west1', 'west2'].map(k => (
+          <button key={k} onClick={() => setCampKey(k)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: `1px solid ${campKey === k ? '#C8E020' : 'rgba(255,255,255,0.08)'}`, background: campKey === k ? 'rgba(200,224,32,0.12)' : 'transparent', color: campKey === k ? '#C8E020' : '#8FB8A8', fontWeight: campKey === k ? 700 : 400, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {k === 'west1' ? 'West One' : 'West Two'}
+          </button>
+        ))}
+      </div>
+      {sorted.map(([k, score]) => (
+        <ScoreControls key={k} teamKey={k} campKey={campKey} score={score} updateScore={updateScore} />
+      ))}
+    </div>
+  )
+}
+
 // ─── TEAM ADMIN PANEL ─────────────────────────────────────────────────────────
-function TeamAdminPanel() {
+function TeamAdminPanel({ allScores, updateScore }) {
   const [selectedTeam, setSelectedTeam] = useState('red')
-  const [teamData, setTeamData]         = useState(DEFAULT_TEAM_DATA)
-  const [cheerUrl, setCheerUrl]         = useState('')
-  const [message, setMessage]           = useState('')
-  const [msgActive, setMsgActive]       = useState(false)
-  const [logAmount, setLogAmount]       = useState('10')
-  const [logReason, setLogReason]       = useState('')
-  const [saving, setSaving]             = useState(false)
+  const [teamData,     setTeamData]     = useState({ cheer_url: '', message: '', message_active: false })
+  const [cheerUrl,     setCheerUrl]     = useState('')
+  const [message,      setMessage]      = useState('')
+  const [msgActive,    setMsgActive]    = useState(false)
+  const [saving,       setSaving]       = useState(false)
+  const [campKey,      setCampKey]      = useState('west1')
 
   useEffect(() => {
     const ref = doc(db, 'teams', selectedTeam)
     return onSnapshot(ref, snap => {
-      const d = snap.exists() ? { ...DEFAULT_TEAM_DATA, ...snap.data() } : DEFAULT_TEAM_DATA
+      const d = snap.exists() ? snap.data() : {}
       setTeamData(d)
       setCheerUrl(d.cheer_url || '')
       setMessage(d.message || '')
@@ -1092,7 +1127,7 @@ function TeamAdminPanel() {
     const ref = doc(db, 'teams', selectedTeam)
     const snap = await getDoc(ref)
     if (snap.exists()) await updateDoc(ref, { cheer_url: cheerUrl })
-    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, cheer_url: cheerUrl })
+    else await setDoc(ref, { cheer_url: cheerUrl, message: '', message_active: false })
     setSaving(false)
   }
 
@@ -1101,40 +1136,40 @@ function TeamAdminPanel() {
     const ref = doc(db, 'teams', selectedTeam)
     const snap = await getDoc(ref)
     if (snap.exists()) await updateDoc(ref, { message, message_active: msgActive })
-    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, message, message_active: msgActive })
-    setSaving(false)
-  }
-
-  const addPointsLog = async () => {
-    const amount = parseInt(logAmount)
-    if (!logReason.trim() || isNaN(amount)) return
-    setSaving(true)
-    const ref = doc(db, 'teams', selectedTeam)
-    const entry = { amount, reason: logReason.trim(), timestamp: new Date() }
-    const snap = await getDoc(ref)
-    if (snap.exists()) await updateDoc(ref, { points_log: arrayUnion(entry) })
-    else await setDoc(ref, { ...DEFAULT_TEAM_DATA, points_log: [entry] })
-    setLogReason('')
+    else await setDoc(ref, { cheer_url: '', message, message_active: msgActive })
     setSaving(false)
   }
 
   const t = TEAM[selectedTeam]
+  const score = (allScores[campKey] || DEFAULT_SCORES)[selectedTeam] || 0
 
   return (
     <div>
+      {/* Camp selector */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {['west1', 'west2'].map(k => (
+          <button key={k} onClick={() => setCampKey(k)} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: `1px solid ${campKey === k ? '#C8E020' : 'rgba(255,255,255,0.08)'}`, background: campKey === k ? 'rgba(200,224,32,0.12)' : 'transparent', color: campKey === k ? '#C8E020' : '#8FB8A8', fontWeight: campKey === k ? 700 : 400, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {k === 'west1' ? 'West One' : 'West Two'}
+          </button>
+        ))}
+      </div>
+
       {/* Team selector */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 16 }}>
         {Object.entries(TEAM).map(([key, tm]) => (
-          <button key={key} onClick={() => setSelectedTeam(key)} style={{ padding: '10px 0', borderRadius: 10, border: `1.5px solid ${selectedTeam === key ? tm.color : 'rgba(255,255,255,0.08)'}`, background: selectedTeam === key ? tm.bg : 'transparent', color: selectedTeam === key ? tm.color : '#8FB8A8', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif', letterSpacing: '0.06em", textTransform: 'uppercase' }}>
+          <button key={key} onClick={() => setSelectedTeam(key)} style={{ padding: '10px 0', borderRadius: 10, border: `1.5px solid ${selectedTeam === key ? tm.color : 'rgba(255,255,255,0.08)'}`, background: selectedTeam === key ? tm.bg : 'transparent', color: selectedTeam === key ? tm.color : '#8FB8A8', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {tm.label}
           </button>
         ))}
       </div>
 
+      {/* Score controls — same component as Scores tab */}
+      <ScoreControls teamKey={selectedTeam} campKey={campKey} score={score} updateScore={updateScore} />
+
       {/* Cheer URL */}
-      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Cheer Video URL</p>
+      <p style={{ margin: '16px 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Cheer Video URL</p>
       <input value={cheerUrl} onChange={e => setCheerUrl(e.target.value)} placeholder="Paste Google Drive share link..." style={{ display: 'block', width: '100%', marginBottom: 8, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
-      <button onClick={saveCheerUrl} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 20 }}>
+      <button onClick={saveCheerUrl} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 16 }}>
         Save URL
       </button>
 
@@ -1147,32 +1182,9 @@ function TeamAdminPanel() {
         </button>
         <span style={{ fontSize: 13, color: msgActive ? t.color : '#8FB8A8', fontWeight: 600 }}>{msgActive ? 'Visible to leaders' : 'Hidden'}</span>
       </div>
-      <button onClick={saveMessage} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 20 }}>
+      <button onClick={saveMessage} disabled={saving} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>
         {saving ? 'Saving...' : 'Save Message'}
       </button>
-
-      {/* Points log entry */}
-      <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: t.color, fontFamily: "'Oswald',sans-serif" }}>Log Points</p>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <input type="number" value={logAmount} onChange={e => setLogAmount(e.target.value)} placeholder="Pts" style={{ width: 72, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 12px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
-        <input value={logReason} onChange={e => setLogReason(e.target.value)} placeholder="Reason (e.g. Field Games)" style={{ flex: 1, background: '#172018', border: `1px solid ${t.color}40`, borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
-      </div>
-      <button onClick={addPointsLog} disabled={saving || !logReason.trim()} style={{ width: '100%', padding: '11px', borderRadius: 10, background: t.bg, border: `1px solid ${t.color}50`, color: t.color, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase', opacity: logReason.trim() ? 1 : 0.4 }}>
-        Add to Log
-      </button>
-
-      {/* Recent log preview */}
-      {teamData.points_log && teamData.points_log.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#8FB8A8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald',sans-serif" }}>Recent entries</p>
-          {[...teamData.points_log].reverse().slice(0, 3).map((entry, i) => (
-            <div key={i} style={{ background: '#172018', borderRadius: 10, padding: '8px 12px', marginBottom: 6, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: entry.amount > 0 ? t.color : '#FF4D4D', minWidth: 36, fontFamily: "'Oswald',sans-serif" }}>{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</span>
-              <span style={{ fontSize: 13, color: '#F0EDDF', flex: 1 }}>{entry.reason}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -1315,7 +1327,7 @@ export default function CampHub() {
           {page === 'schedule'   && <SchedulePage  campInfo={campInfo} now={now} myTeam={myTeam} />}
           {page === 'scoreboard' && <ScoreboardPage scores={currentScores} />}
           {page === 'map'        && <MapPage />}
-          {page === 'teamhub'    && <TeamHubPage   myTeam={myTeam} campInfo={campInfo} now={now} onBack={goBack} />}
+          {page === 'teamhub'    && <TeamHubPage   myTeam={myTeam} campInfo={campInfo} now={now} onBack={goBack} teamScore={myTeam ? (allScores[campInfo ? campInfo.campKey : 'west1'] || DEFAULT_SCORES)[myTeam] || 0 : 0} />}
           {page === 'faq'        && <FAQPage        onBack={goBack} />}
           {page === 'rules'      && <RulesPage      onBack={goBack} />}
           {page === 'contacts'   && <ContactsPage   onBack={goBack} />}
