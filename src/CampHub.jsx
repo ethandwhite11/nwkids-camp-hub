@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
-  bg:'#0D3F2F',surface:'#154030',border:'rgba(255,255,255,0.09)',
+  bg:'#0D3F2F',surface:'#154030',surfaceHi:'#1C5040',border:'rgba(255,255,255,0.09)',
   accent:'#E05C1A',accentBg:'rgba(224,92,26,0.15)',accentBdr:'rgba(224,92,26,0.45)',
   yellow:'#C8E020',yellowBg:'rgba(200,224,32,0.12)',yellowBdr:'rgba(200,224,32,0.40)',
   text:'#F0EDDF',muted:'#7A9E8E',mutedLight:'#9BBFAF',
@@ -14,10 +14,10 @@ const C = {
 }
 
 const TEAM = {
-  red:   {color:'#FF4D4D',bg:'rgba(255,77,77,0.15)',   label:'Red'},
-  yellow:{color:'#FFD700',bg:'rgba(255,215,0,0.15)',   label:'Yellow'},
-  green: {color:'#4CAF50',bg:'rgba(76,175,80,0.15)',   label:'Green'},
-  blue:  {color:'#4A90E2',bg:'rgba(74,144,226,0.15)',  label:'Blue'},
+  red:   {color:'#FF4D4D',bg:'rgba(255,77,77,0.15)',   dark:'rgba(255,77,77,0.25)',   label:'Red'},
+  yellow:{color:'#FFD700',bg:'rgba(255,215,0,0.15)',   dark:'rgba(255,215,0,0.25)',   label:'Yellow'},
+  green: {color:'#4CAF50',bg:'rgba(76,175,80,0.15)',   dark:'rgba(76,175,80,0.25)',   label:'Green'},
+  blue:  {color:'#4A90E2',bg:'rgba(74,144,226,0.15)',  dark:'rgba(74,144,226,0.25)',  label:'Blue'},
 }
 
 const DEFAULT_SCORES = { red:0, yellow:0, green:0, blue:0 }
@@ -128,22 +128,21 @@ function getCampInfo(now) {
   }
   return null
 }
-
-function getSchedule(day) {
+function getSchedule(day){
   if(day===1)return SCHEDULE[1]
   if(day===2||day===3)return SCHEDULE['2-3']
   if(day===4)return SCHEDULE[4]
   return[]
 }
-
-function getCurrentActivity(sched,now) {
+function getCurrentActivity(sched,now){
   const tm=now.getHours()*60+now.getMinutes()
   for(let i=0;i<sched.length;i++){
-    const s=parseTime(sched[i].time),e=i<sched.length-1?parseTime(sched[i+1].time):24*60
-    if(tm>=s&&tm<e)return{current:sched[i],next:sched[i+1]||null,minIn:tm-s}
+    const s=parseTime(sched[i].time)
+    const e=i<sched.length-1?parseTime(sched[i+1].time):24*60
+    if(tm>=s&&tm<e)return{current:sched[i],next:sched[i+1]||null,minIn:tm-s,duration:e-s}
   }
-  if(tm<parseTime(sched[0].time))return{current:null,next:sched[0],minUntil:parseTime(sched[0].time)-tm}
-  return{current:sched[sched.length-1],next:null,minIn:0}
+  if(tm<parseTime(sched[0].time))return{current:null,next:sched[0],minUntil:parseTime(sched[0].time)-tm,duration:0}
+  return{current:sched[sched.length-1],next:null,minIn:0,duration:60}
 }
 
 // ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
@@ -151,81 +150,234 @@ function SCard({children,style}){
   return <div style={{background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,padding:'14px 16px',marginBottom:10,...style}}>{children}</div>
 }
 function SecLabel({children}){
-  return <p style={{margin:'20px 0 10px',fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.muted}}>{children}</p>
+  return <p style={{margin:'20px 0 10px',fontSize:12,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>{children}</p>
 }
 function BackHeader({title,onBack}){
   return(
     <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${C.border}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
       <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:26,padding:0,lineHeight:1}}>‹</button>
-      <h2 style={{margin:0,fontSize:18,fontWeight:700,color:C.text}}>{title}</h2>
+      <h2 style={{margin:0,fontSize:20,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>{title}</h2>
+    </div>
+  )
+}
+function ProgressBar({progress,color,height=4}){
+  return(
+    <div style={{height,background:'rgba(255,255,255,0.1)',borderRadius:99,overflow:'hidden'}}>
+      <div style={{height:'100%',width:`${Math.min(100,Math.max(0,progress*100))}%`,background:color,borderRadius:99,transition:'width 60s linear'}}/>
+    </div>
+  )
+}
+
+// ─── TEAM PICKER ─────────────────────────────────────────────────────────────
+function TeamPicker({onSelect}){
+  const[selected,setSelected]=useState(null)
+  return(
+    <div style={{
+      minHeight:'100vh',background:C.bg,display:'flex',flexDirection:'column',
+      padding:'52px 24px 40px',
+      backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 14px)',
+    }}>
+      <div style={{marginBottom:36}}>
+        <p style={{margin:'0 0 2px',fontSize:14,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>NW Kids</p>
+        <h1 style={{margin:'0 0 4px',fontSize:36,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>Summer Camp</h1>
+        <p style={{margin:'12px 0 0',fontSize:15,color:C.muted,lineHeight:1.5}}>Select your team to get a personalized view of rotations and the schedule.</p>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,flex:1}}>
+        {Object.entries(TEAM).map(([key,t])=>(
+          <button key={key} onClick={()=>setSelected(key)} style={{
+            background:selected===key?t.dark:C.surface,
+            border:`2px solid ${selected===key?t.color:C.border}`,
+            borderRadius:20,padding:'28px 16px',cursor:'pointer',textAlign:'center',
+            transition:'all 0.15s',transform:selected===key?'scale(1.03)':'scale(1)',
+          }}>
+            <div style={{width:44,height:44,borderRadius:'50%',background:t.color,margin:'0 auto 14px',boxShadow:selected===key?`0 0 20px ${t.color}60`:null}}/>
+            <p style={{margin:0,fontSize:17,fontWeight:700,color:selected===key?t.color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{t.label}</p>
+            <p style={{margin:'3px 0 0',fontSize:12,color:C.muted}}>Team</p>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={()=>selected&&onSelect(selected)}
+        style={{
+          marginTop:24,padding:'15px',borderRadius:14,
+          background:selected?TEAM[selected].color:'rgba(255,255,255,0.1)',
+          border:'none',color:selected?'#fff':C.muted,
+          fontSize:16,fontWeight:700,cursor:selected?'pointer':'default',
+          fontFamily:"'Oswald',sans-serif",letterSpacing:'0.08em',textTransform:'uppercase',
+          transition:'all 0.2s',
+        }}>
+        {selected?`I'm on ${TEAM[selected].label} Team →`:'Select a team above'}
+      </button>
+    </div>
+  )
+}
+
+// ─── TEAM CHANGE MODAL ────────────────────────────────────────────────────────
+function TeamChangeModal({myTeam,onSelect,onClose}){
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:200,display:'flex',alignItems:'flex-end'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:C.surface,width:'100%',borderRadius:'20px 20px 0 0',padding:'24px 20px 44px',border:`1px solid ${C.border}`}}>
+        <p style={{margin:'0 0 16px',fontSize:18,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>Change Team</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          {Object.entries(TEAM).map(([key,t])=>(
+            <button key={key} onClick={()=>{onSelect(key);onClose()}} style={{
+              padding:'14px',borderRadius:12,cursor:'pointer',
+              background:myTeam===key?t.bg:'transparent',
+              border:`1.5px solid ${myTeam===key?t.color:C.border}`,
+              display:'flex',alignItems:'center',gap:10,
+            }}>
+              <div style={{width:12,height:12,borderRadius:'50%',background:t.color,flexShrink:0}}/>
+              <span style={{fontSize:15,fontWeight:700,color:myTeam===key?t.color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em',textTransform:'uppercase'}}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{width:'100%',padding:'12px',borderRadius:10,background:'transparent',border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
 
 // ─── NOW BANNER ───────────────────────────────────────────────────────────────
-function NowBanner({campInfo,now}){
+function NowBanner({campInfo,now,myTeam}){
   if(!campInfo){
     const before=now<new Date('2026-08-02')
     const days=Math.ceil((new Date('2026-08-02')-now)/(1000*60*60*24))
     return(
       <SCard>
-        <p style={{margin:0,fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted}}>Camp Status</p>
-        <p style={{margin:'4px 0 0',fontSize:20,fontWeight:800,color:C.text}}>
-          {before?`West One starts in ${days} days`:'Camp has wrapped. See you next year.'}
+        <p style={{margin:0,fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>Camp Status</p>
+        <p style={{margin:'4px 0 0',fontSize:22,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
+          {before?`West One in ${days} days`:'Camp wrapped. See you next year.'}
         </p>
       </SCard>
     )
   }
+
   const sched=getSchedule(campInfo.day)
-  const{current,next,minIn,minUntil}=getCurrentActivity(sched,now)
+  const{current,next,minIn,minUntil,duration}=getCurrentActivity(sched,now)
   const rots=(campInfo.day===2||campInfo.day===3)?ROTATIONS[campInfo.day]:null
   const isRot=current?.isRotation
-  return(
+  const remaining=duration-minIn
+  const progress=duration>0?minIn/duration:0
+
+  const BannerWrap=({children})=>(
     <div style={{
       background:'linear-gradient(150deg,#1D5A3F 0%,#0A3025 100%)',
       borderRadius:16,padding:18,marginBottom:12,
-      border:`1px solid ${C.accentBdr}`,
+      border:`1px solid ${isRot&&myTeam?TEAM[myTeam].color+'50':C.accentBdr}`,
       backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 12px)',
     }}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
         <div style={{display:'flex',alignItems:'center',gap:7}}>
           <div style={{width:8,height:8,borderRadius:'50%',background:C.green,boxShadow:`0 0 6px ${C.green}`}}/>
-          <span style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.green}}>Live Now</span>
+          <span style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.green,fontFamily:"'Oswald',sans-serif"}}>Live Now</span>
         </div>
         <span style={{fontSize:11,fontWeight:600,color:C.muted,background:C.surface,padding:'3px 10px',borderRadius:99,border:`1px solid ${C.border}`}}>
           {campInfo.camp} · Day {campInfo.day}
         </span>
       </div>
-      {current?(
-        <>
-          <p style={{margin:'0 0 2px',fontSize:24,fontWeight:800,color:C.text,lineHeight:1.15}}>{current.emoji} {current.label}</p>
-          {!isRot&&<p style={{margin:'0 0 10px',fontSize:12,color:C.muted}}>Started {minIn} min ago</p>}
-          {isRot&&rots&&(
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,margin:'10px 0 12px'}}>
-              {Object.entries(TEAM).map(([k,t])=>(
-                <div key={k} style={{background:t.bg,borderRadius:9,padding:'7px 11px',display:'flex',alignItems:'center',gap:7,border:`1px solid ${t.color}25`}}>
-                  <div style={{width:9,height:9,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-                  <div>
-                    <p style={{margin:0,fontSize:10,fontWeight:700,color:t.color,textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label}</p>
-                    <p style={{margin:0,fontSize:13,fontWeight:600,color:C.text}}>{rots[current.rotNum]?.[k]||'—'}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {next&&(
-            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase'}}>Next</span>
-              <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
-            </div>
-          )}
-        </>
-      ):(
-        <p style={{margin:'4px 0 0',fontSize:18,fontWeight:700,color:C.text}}>
-          {next?.emoji} {next?.label} starts in {minUntil} min
-        </p>
-      )}
+      {children}
     </div>
+  )
+
+  if(!current){
+    return(
+      <BannerWrap>
+        <p style={{margin:'4px 0 0',fontSize:20,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
+          {next?.emoji} {next?.label} in {minUntil} min
+        </p>
+      </BannerWrap>
+    )
+  }
+
+  // ── Rotation + team selected ────────────────────────────────────────────────
+  if(isRot&&myTeam&&rots){
+    const t=TEAM[myTeam]
+    const myLocation=rots[current.rotNum]?.[myTeam]||'—'
+    const others=Object.entries(TEAM).filter(([k])=>k!==myTeam)
+    return(
+      <BannerWrap>
+        <p style={{margin:'0 0 10px',fontSize:13,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>
+          {current.emoji} {current.label}
+        </p>
+
+        {/* Your team card */}
+        <div style={{background:t.dark,border:`1.5px solid ${t.color}60`,borderRadius:12,padding:'14px 16px',marginBottom:10}}>
+          <p style={{margin:'0 0 4px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:t.color,fontFamily:"'Oswald',sans-serif"}}>{t.label} Team · Your Location</p>
+          <p style={{margin:'0 0 12px',fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1}}>{myLocation}</p>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+            <p style={{margin:0,fontSize:13,fontWeight:600,color:t.color}}>{remaining} min left</p>
+            <div style={{flex:1}}>
+              <ProgressBar progress={progress} color={t.color}/>
+            </div>
+          </div>
+        </div>
+
+        {/* Other teams compact */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
+          {others.map(([k,ot])=>(
+            <div key={k} style={{background:'rgba(0,0,0,0.2)',borderRadius:8,padding:'7px 8px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
+                <div style={{width:7,height:7,borderRadius:'50%',background:ot.color,flexShrink:0}}/>
+                <span style={{fontSize:10,fontWeight:700,color:ot.color,textTransform:'uppercase',letterSpacing:'0.04em',fontFamily:"'Oswald',sans-serif"}}>{ot.label}</span>
+              </div>
+              <p style={{margin:0,fontSize:12,fontWeight:600,color:C.mutedLight}}>{rots[current.rotNum]?.[k]||'—'}</p>
+            </div>
+          ))}
+        </div>
+
+        {next&&(
+          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
+            <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
+          </div>
+        )}
+      </BannerWrap>
+    )
+  }
+
+  // ── Rotation, no team selected ──────────────────────────────────────────────
+  if(isRot&&rots){
+    return(
+      <BannerWrap>
+        <p style={{margin:'0 0 10px',fontSize:22,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{current.emoji} {current.label}</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:10}}>
+          {Object.entries(TEAM).map(([k,t])=>(
+            <div key={k} style={{background:t.bg,borderRadius:9,padding:'8px 11px',border:`1px solid ${t.color}25`}}>
+              <p style={{margin:'0 0 2px',fontSize:10,fontWeight:700,color:t.color,textTransform:'uppercase',letterSpacing:'0.04em',fontFamily:"'Oswald',sans-serif"}}>{t.label}</p>
+              <p style={{margin:0,fontSize:14,fontWeight:600,color:C.text}}>{rots[current.rotNum]?.[k]||'—'}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{background:C.accentBg,borderRadius:8,padding:'8px 12px',marginBottom:10,border:`1px solid ${C.accentBdr}`}}>
+          <p style={{margin:0,fontSize:12,color:C.accent,fontWeight:600}}>💡 Select your team in the header for a personalized view</p>
+        </div>
+        {next&&(
+          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
+            <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
+          </div>
+        )}
+      </BannerWrap>
+    )
+  }
+
+  // ── Regular activity ────────────────────────────────────────────────────────
+  return(
+    <BannerWrap>
+      <p style={{margin:'0 0 2px',fontSize:26,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1.1}}>{current.emoji} {current.label}</p>
+      <p style={{margin:'4px 0 12px',fontSize:12,color:C.muted}}>{minIn} min in · {remaining} min left</p>
+      <ProgressBar progress={progress} color={C.accent}/>
+      {next&&(
+        <div style={{marginTop:10,borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
+          <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
+        </div>
+      )}
+    </BannerWrap>
   )
 }
 
@@ -239,8 +391,7 @@ const CARDS=[
   {id:'contacts',emoji:'👥',label:'Contacts',sub:'Leadership team'},
   {id:'freetime',emoji:'🎯',label:'Free Time',sub:'Things to do'},
 ]
-
-function HomeScreen({campInfo,now,nav,announcement}){
+function HomeScreen({campInfo,now,nav,announcement,myTeam}){
   return(
     <div style={{padding:'16px 16px 32px'}}>
       {announcement&&(
@@ -249,7 +400,7 @@ function HomeScreen({campInfo,now,nav,announcement}){
           <p style={{margin:0,fontSize:14,fontWeight:600,color:C.yellow,lineHeight:1.4}}>{announcement}</p>
         </div>
       )}
-      <NowBanner campInfo={campInfo} now={now}/>
+      <NowBanner campInfo={campInfo} now={now} myTeam={myTeam}/>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
         {CARDS.map(card=>(
           <button key={card.id} onClick={()=>nav(card.id)} style={{
@@ -261,7 +412,7 @@ function HomeScreen({campInfo,now,nav,announcement}){
           }}>
             <span style={{fontSize:card.wide?28:32,display:'block',marginBottom:card.wide?0:10}}>{card.emoji}</span>
             <div style={{flex:1}}>
-              <p style={{margin:0,fontSize:16,fontWeight:700,color:C.text}}>{card.label}</p>
+              <p style={{margin:0,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em',textTransform:'uppercase'}}>{card.label}</p>
               <p style={{margin:'3px 0 0',fontSize:12,color:C.muted}}>{card.sub}</p>
             </div>
             {card.wide&&<span style={{color:C.muted,fontSize:22}}>›</span>}
@@ -273,7 +424,7 @@ function HomeScreen({campInfo,now,nav,announcement}){
 }
 
 // ─── SCHEDULE PAGE ────────────────────────────────────────────────────────────
-function SchedulePage({campInfo,now,onBack}){
+function SchedulePage({campInfo,now,onBack,myTeam}){
   const[day,setDay]=useState(campInfo?.day||2)
   const sched=getSchedule(day)
   const tm=now.getHours()*60+now.getMinutes()
@@ -292,7 +443,7 @@ function SchedulePage({campInfo,now,onBack}){
           }}>Day {d}</button>
         ))}
       </div>
-      {rots&&<p style={{margin:'10px 16px 0',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}}>{day===2?'Monday / Thursday':'Tuesday / Friday'} Rotation</p>}
+      {rots&&<p style={{margin:'10px 16px 0',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>{day===2?'Monday / Thursday':'Tuesday / Friday'} Rotation</p>}
       <div style={{padding:'12px 16px 90px'}}>
         {sched.map((item,i)=>{
           const s=parseTime(item.time),e=i<sched.length-1?parseTime(sched[i+1].time):24*60
@@ -308,14 +459,24 @@ function SchedulePage({campInfo,now,onBack}){
                 <div style={{background:isCur?C.accentBg:C.surface,borderRadius:12,padding:'11px 14px',border:`1px solid ${isCur?C.accentBdr:C.border}`,opacity:isPast?0.4:1}}>
                   <p style={{margin:0,fontSize:14,fontWeight:isCur?700:500,color:isCur?C.yellow:C.text}}>{item.emoji} {item.label}</p>
                   {item.isRotation&&rots&&(
-                    <div style={{marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-                      {Object.entries(TEAM).map(([k,t])=>(
-                        <div key={k} style={{display:'flex',alignItems:'center',gap:5}}>
-                          <div style={{width:7,height:7,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-                          <span style={{fontSize:12,color:C.muted}}>{t.label}:</span>
-                          <span style={{fontSize:12,fontWeight:600,color:C.text}}>{rots[item.rotNum]?.[k]}</span>
-                        </div>
-                      ))}
+                    <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:4}}>
+                      {Object.entries(TEAM).map(([k,t])=>{
+                        const isMyTeam=myTeam===k
+                        return(
+                          <div key={k} style={{
+                            display:'flex',alignItems:'center',gap:8,
+                            background:isMyTeam?t.bg:'transparent',
+                            borderRadius:isMyTeam?8:0,
+                            padding:isMyTeam?'5px 8px':'2px 0',
+                            border:isMyTeam?`1px solid ${t.color}40`:'none',
+                          }}>
+                            <div style={{width:8,height:8,borderRadius:'50%',background:t.color,flexShrink:0}}/>
+                            <span style={{fontSize:12,color:isMyTeam?t.color:C.muted,fontWeight:isMyTeam?700:400}}>{t.label}:</span>
+                            <span style={{fontSize:12,fontWeight:isMyTeam?700:500,color:isMyTeam?C.text:C.mutedLight,flex:1}}>{rots[item.rotNum]?.[k]}</span>
+                            {isMyTeam&&<span style={{fontSize:10,fontWeight:700,color:t.color,background:`${t.color}20`,padding:'1px 6px',borderRadius:4,textTransform:'uppercase',letterSpacing:'0.04em'}}>You</span>}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -336,15 +497,15 @@ function ScoreboardPage({scores,onBack}){
     <div>
       <BackHeader title="Camp Cup" onBack={onBack}/>
       <div style={{padding:'16px 16px 90px'}}>
-        <p style={{margin:'0 0 16px',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}}>Live · Updates in real time</p>
+        <p style={{margin:'0 0 16px',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>Live · Updates in real time</p>
         {sorted.map(([k,score],i)=>{
           const t=TEAM[k],leading=k===sorted[0][0]&&score>0
           return(
             <div key={k} style={{background:leading?t.bg:C.surface,borderRadius:16,padding:'16px 20px',marginBottom:10,border:`1px solid ${leading?t.color+'60':C.border}`,display:'flex',alignItems:'center',gap:14}}>
               <span style={{fontSize:22,width:28,textAlign:'center'}}>{medals[i]}</span>
               <div style={{width:14,height:14,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-              <p style={{margin:0,fontSize:17,fontWeight:700,color:C.text,flex:1}}>{t.label} Team</p>
-              <p style={{margin:0,fontSize:30,fontWeight:800,color:leading?t.color:C.text,minWidth:50,textAlign:'right'}}>{score}</p>
+              <p style={{margin:0,fontSize:18,fontWeight:700,color:C.text,flex:1,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label} Team</p>
+              <p style={{margin:0,fontSize:32,fontWeight:700,color:leading?t.color:C.text,minWidth:50,textAlign:'right',fontFamily:"'Oswald',sans-serif"}}>{score}</p>
             </div>
           )
         })}
@@ -416,7 +577,7 @@ function RulesPage({onBack}){
       <div style={{padding:'16px 16px 90px'}}>
         {RULES.map((rule,i)=>(
           <SCard key={i} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-            <div style={{width:24,height:24,borderRadius:7,background:C.accentBg,color:C.accent,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0,marginTop:1}}>{i+1}</div>
+            <div style={{width:24,height:24,borderRadius:7,background:C.accentBg,color:C.accent,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1,fontFamily:"'Oswald',sans-serif"}}>{i+1}</div>
             <p style={{margin:0,fontSize:14,color:C.text,lineHeight:1.55,flex:1}}>{rule}</p>
           </SCard>
         ))}
@@ -432,12 +593,12 @@ function ContactsPage({onBack}){
       <BackHeader title="Contacts" onBack={onBack}/>
       <div style={{padding:'16px 16px 90px'}}>
         <SCard style={{background:'rgba(255,59,48,0.08)',border:'1px solid rgba(255,59,48,0.2)'}}>
-          <p style={{margin:'0 0 4px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#FF3B30'}}>🚨 Emergency</p>
+          <p style={{margin:'0 0 4px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#FF3B30',fontFamily:"'Oswald',sans-serif"}}>🚨 Emergency</p>
           <p style={{margin:0,fontSize:14,color:C.text}}>Call <strong>911</strong> first for any life-threatening situation, then alert Ethan.</p>
         </SCard>
         {CONTACTS.map((c,i)=>(
           <SCard key={i}>
-            <p style={{margin:'0 0 2px',fontSize:15,fontWeight:700,color:C.text}}>{c.name}</p>
+            <p style={{margin:'0 0 2px',fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{c.name}</p>
             <p style={{margin:'0 0 6px',fontSize:13,color:C.accent}}>{c.role}</p>
             <p style={{margin:0,fontSize:12,color:C.muted}}>{c.note}</p>
           </SCard>
@@ -458,7 +619,7 @@ function FreeTimePage({onBack}){
           <SCard key={i} style={{display:'flex',gap:14,alignItems:'center'}}>
             <span style={{fontSize:26,flexShrink:0}}>{item.icon}</span>
             <div>
-              <p style={{margin:'0 0 2px',fontSize:15,fontWeight:700,color:C.text}}>{item.name}</p>
+              <p style={{margin:'0 0 2px',fontSize:15,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{item.name}</p>
               <p style={{margin:0,fontSize:12,color:C.muted}}>{item.note}</p>
             </div>
           </SCard>
@@ -478,7 +639,6 @@ const SEARCHABLE=[
   {type:'Page',title:'Map',body:'Camp layout directions areas buildings',page:'map'},
   {type:'Page',title:'Camp Cup',body:'Team scores Red Yellow Green Blue points',page:'scoreboard'},
 ]
-
 function SearchOverlay({onClose,nav}){
   const[q,setQ]=useState('')
   const results=q.length>1?SEARCHABLE.filter(r=>r.title.toLowerCase().includes(q.toLowerCase())||r.body.toLowerCase().includes(q.toLowerCase())).slice(0,8):[]
@@ -491,7 +651,7 @@ function SearchOverlay({onClose,nav}){
       <div style={{padding:'12px 16px',flex:1,overflowY:'auto'}}>
         {results.length>0?results.map((r,i)=>(
           <button key={i} onClick={()=>nav(r.page)} style={{display:'block',width:'100%',background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'12px 14px',marginBottom:8,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.accent,textTransform:'uppercase',letterSpacing:'0.06em',background:C.accentBg,padding:'2px 7px',borderRadius:4}}>{r.type}</span>
+            <span style={{fontSize:10,fontWeight:700,color:C.accent,textTransform:'uppercase',letterSpacing:'0.06em',background:C.accentBg,padding:'2px 7px',borderRadius:4,fontFamily:"'Oswald',sans-serif"}}>{r.type}</span>
             <p style={{margin:'5px 0 2px',fontSize:14,fontWeight:600,color:C.text}}>{r.title}</p>
             <p style={{margin:0,fontSize:12,color:C.muted}}>{r.body.substring(0,90)}{r.body.length>90?'…':''}</p>
           </button>
@@ -502,40 +662,36 @@ function SearchOverlay({onClose,nav}){
 }
 
 // ─── ADMIN LOGIN ──────────────────────────────────────────────────────────────
-function AdminLogin({onLogin}){
+function AdminLogin(){
   const[email,setEmail]=useState('')
   const[pass,setPass]=useState('')
   const[error,setError]=useState('')
   const[loading,setLoading]=useState(false)
   const submit=async(e)=>{
-    e.preventDefault()
-    setLoading(true);setError('')
-    try{await signInWithEmailAndPassword(auth,email,pass);onLogin()}
-    catch(err){setError('Invalid email or password.');setLoading(false)}
+    e.preventDefault();setLoading(true);setError('')
+    try{await signInWithEmailAndPassword(auth,email,pass)}
+    catch{setError('Invalid email or password.');setLoading(false)}
   }
   return(
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
       <p style={{fontFamily:"'Oswald',sans-serif",fontSize:13,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,marginBottom:4}}>NW Kids</p>
-      <h1 style={{fontFamily:"'Oswald',sans-serif",fontSize:24,fontWeight:700,textTransform:'uppercase',color:C.text,marginBottom:2}}>Admin Panel</h1>
+      <h1 style={{fontFamily:"'Oswald',sans-serif",fontSize:28,fontWeight:700,textTransform:'uppercase',color:C.text,marginBottom:2,letterSpacing:'0.04em'}}>Admin Panel</h1>
       <p style={{fontSize:13,color:C.muted,marginBottom:28}}>Sign in to manage scores and announcements</p>
       <form onSubmit={submit} style={{width:'100%',maxWidth:340}}>
-        <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" required
-          style={{display:'block',width:'100%',marginBottom:10,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:15,color:C.text,outline:'none',fontFamily:'inherit'}}/>
-        <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Password" required
-          style={{display:'block',width:'100%',marginBottom:16,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:15,color:C.text,outline:'none',fontFamily:'inherit'}}/>
+        <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" required style={{display:'block',width:'100%',marginBottom:10,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:15,color:C.text,outline:'none',fontFamily:'inherit'}}/>
+        <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Password" required style={{display:'block',width:'100%',marginBottom:16,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:15,color:C.text,outline:'none',fontFamily:'inherit'}}/>
         {error&&<p style={{color:'#FF4D4D',fontSize:13,marginBottom:12,textAlign:'center'}}>{error}</p>}
-        <button type="submit" disabled={loading} style={{width:'100%',padding:'13px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'inherit',opacity:loading?0.6:1}}>
-          {loading?'Signing in…':'Sign In'}
-        </button>
+        <button type="submit" disabled={loading} style={{width:'100%',padding:'13px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'inherit',opacity:loading?0.6:1}}>{loading?'Signing in…':'Sign In'}</button>
       </form>
     </div>
   )
 }
 
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
-function AdminDashboard({allScores,campInfo,updateScore,announcement,setAnnouncementText}){
+function AdminDashboard({allScores,updateScore,announcement}){
   const[draft,setDraft]=useState(announcement||'')
   const[saving,setSaving]=useState(false)
+  useEffect(()=>setDraft(announcement||''),[announcement])
 
   const postAnnouncement=async()=>{
     setSaving(true)
@@ -546,7 +702,6 @@ function AdminDashboard({allScores,campInfo,updateScore,announcement,setAnnounce
     setDraft('')
     await setDoc(doc(db,'announcement','current'),{text:'',active:false})
   }
-
   const ScorePanel=({campKey,campName})=>{
     const scores=allScores[campKey]||DEFAULT_SCORES
     const sorted=[...Object.entries(scores)].sort(([,a],[,b])=>b-a)
@@ -558,10 +713,10 @@ function AdminDashboard({allScores,campInfo,updateScore,announcement,setAnnounce
           return(
             <div key={k} style={{background:C.surface,borderRadius:12,padding:'10px 14px',marginBottom:8,border:`1px solid ${C.border}`,display:'flex',alignItems:'center',gap:12}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-              <p style={{margin:0,fontSize:14,fontWeight:600,color:C.text,flex:1}}>{t.label}</p>
+              <p style={{margin:0,fontSize:15,fontWeight:700,color:C.text,flex:1,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label}</p>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <button onClick={()=>updateScore(campKey,k,-10)} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,fontSize:20,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>−</button>
-                <span style={{fontSize:22,fontWeight:800,color:C.text,minWidth:44,textAlign:'center'}}>{score}</span>
+                <span style={{fontSize:24,fontWeight:700,color:C.text,minWidth:44,textAlign:'center',fontFamily:"'Oswald',sans-serif"}}>{score}</span>
                 <button onClick={()=>updateScore(campKey,k,10)} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.accentBdr}`,background:C.accentBg,color:C.accent,fontSize:20,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>+</button>
               </div>
             </div>
@@ -570,31 +725,22 @@ function AdminDashboard({allScores,campInfo,updateScore,announcement,setAnnounce
       </div>
     )
   }
-
   return(
     <div style={{padding:'16px 16px 40px'}}>
       <ScorePanel campKey="west1" campName="West One"/>
       <ScorePanel campKey="west2" campName="West Two"/>
-
       <SecLabel>Announcement</SecLabel>
-      <p style={{fontSize:12,color:C.muted,marginBottom:10}}>Shown as a banner to all leaders on the home screen.</p>
+      <p style={{fontSize:12,color:C.muted,marginBottom:10}}>Shows as a banner on every leader's home screen.</p>
       {announcement&&(
         <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBdr}`,borderRadius:10,padding:'10px 14px',marginBottom:10}}>
-          <p style={{margin:'0 0 2px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.yellow}}>Currently Live</p>
+          <p style={{margin:'0 0 2px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>Currently Live</p>
           <p style={{margin:0,fontSize:13,color:C.text}}>{announcement}</p>
         </div>
       )}
-      <textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type an announcement for all leaders…"
-        style={{width:'100%',background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:14,color:C.text,outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:80,marginBottom:10}}/>
+      <textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type an announcement for all leaders…" style={{width:'100%',background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:14,color:C.text,outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:80,marginBottom:10}}/>
       <div style={{display:'flex',gap:8}}>
-        <button onClick={postAnnouncement} disabled={saving} style={{flex:1,padding:'11px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
-          {saving?'Saving…':'Post Announcement'}
-        </button>
-        {announcement&&(
-          <button onClick={clearAnnouncement} style={{padding:'11px 16px',borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>
-            Clear
-          </button>
-        )}
+        <button onClick={postAnnouncement} disabled={saving} style={{flex:1,padding:'11px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{saving?'Saving…':'Post'}</button>
+        {announcement&&<button onClick={clearAnnouncement} style={{padding:'11px 16px',borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>}
       </div>
     </div>
   )
@@ -610,8 +756,9 @@ export default function CampHub(){
   const[user,setUser]=useState(null)
   const[authChecked,setAuthChecked]=useState(false)
   const[isAdmin,setIsAdmin]=useState(window.location.hash==='#admin')
+  const[myTeam,setMyTeam]=useState(()=>localStorage.getItem('leaderTeam')||null)
+  const[changingTeam,setChangingTeam]=useState(false)
 
-  // Real time: scores
   useEffect(()=>{
     const initIfMissing=async(campKey)=>{
       const ref=doc(db,'scores',campKey)
@@ -629,7 +776,6 @@ export default function CampHub(){
     return()=>{u1();u2()}
   },[])
 
-  // Real time: announcement
   useEffect(()=>{
     return onSnapshot(doc(db,'announcement','current'),snap=>{
       if(snap.exists()&&snap.data().active)setAnnouncement(snap.data().text)
@@ -637,23 +783,23 @@ export default function CampHub(){
     })
   },[])
 
-  // Auth state
-  useEffect(()=>{
-    return onAuthStateChanged(auth,u=>{setUser(u);setAuthChecked(true)})
-  },[])
+  useEffect(()=>{return onAuthStateChanged(auth,u=>{setUser(u);setAuthChecked(true)})},[])
 
-  // Hash detection for admin mode
   useEffect(()=>{
     const onHash=()=>setIsAdmin(window.location.hash==='#admin')
     window.addEventListener('hashchange',onHash)
     return()=>window.removeEventListener('hashchange',onHash)
   },[])
 
-  // Clock tick
   useEffect(()=>{
     const t=setInterval(()=>setNow(new Date()),60000)
     return()=>clearInterval(t)
   },[])
+
+  const selectTeam=(key)=>{
+    localStorage.setItem('leaderTeam',key)
+    setMyTeam(key)
+  }
 
   const campInfo=getCampInfo(now)
   const currentScores=allScores[campInfo?.campKey||'west1']
@@ -666,23 +812,24 @@ export default function CampHub(){
     await setDoc(doc(db,'scores',campKey),{...cur,[team]:newVal})
   }
 
+  // ── Team picker (first open) ──
+  if(!myTeam&&!isAdmin) return <TeamPicker onSelect={selectTeam}/>
+
   // ── Admin view ──
   if(isAdmin){
     if(!authChecked)return <div style={{color:C.muted,textAlign:'center',padding:40}}>Loading…</div>
-    if(!user)return <AdminLogin onLogin={()=>{}}/>
+    if(!user)return <AdminLogin/>
     return(
       <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}>
         <div style={{padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`2px solid ${C.accent}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
           <div>
             <p style={{margin:0,fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>Admin</p>
-            <h1 style={{margin:0,fontSize:20,fontWeight:700,textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>Camp Control</h1>
+            <h1 style={{margin:0,fontSize:22,fontWeight:700,textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em'}}>Camp Control</h1>
           </div>
-          <button onClick={()=>signOut(auth).then(()=>window.location.hash='')} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:'7px 12px',color:C.muted,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-            Sign Out
-          </button>
+          <button onClick={()=>signOut(auth).then(()=>window.location.hash='')} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:'7px 12px',color:C.muted,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Sign Out</button>
         </div>
         <div style={{maxWidth:430,margin:'0 auto'}}>
-          <AdminDashboard allScores={allScores} campInfo={campInfo} updateScore={updateScore} announcement={announcement} setAnnouncementText={setAnnouncement}/>
+          <AdminDashboard allScores={allScores} updateScore={updateScore} announcement={announcement}/>
         </div>
       </div>
     )
@@ -693,20 +840,31 @@ export default function CampHub(){
     <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}>
       {page==='home'&&(
         <div style={{
-          padding:'16px 16px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',
           borderBottom:`1px solid ${C.border}`,background:C.bg,position:'sticky',top:0,zIndex:10,
           backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 14px)',
         }}>
           <div>
-            <p style={{margin:0,fontSize:15,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>NW Kids</p>
+            <p style={{margin:0,fontSize:14,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>NW Kids</p>
             <h1 style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1.1}}>Summer Camp</h1>
           </div>
-          <button onClick={()=>setSearch(true)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:18}}>🔍</button>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            {myTeam&&(
+              <button onClick={()=>setChangingTeam(true)} style={{
+                background:TEAM[myTeam].bg,border:`1px solid ${TEAM[myTeam].color}50`,
+                borderRadius:20,padding:'5px 11px',display:'flex',alignItems:'center',gap:6,cursor:'pointer',
+              }}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:TEAM[myTeam].color}}/>
+                <span style={{fontSize:12,fontWeight:700,color:TEAM[myTeam].color,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{TEAM[myTeam].label}</span>
+              </button>
+            )}
+            <button onClick={()=>setSearch(true)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:16}}>🔍</button>
+          </div>
         </div>
       )}
 
-      {page==='home'      &&<HomeScreen campInfo={campInfo} now={now} nav={nav} announcement={announcement}/>}
-      {page==='schedule'  &&<SchedulePage campInfo={campInfo} now={now} onBack={goHome}/>}
+      {page==='home'      &&<HomeScreen campInfo={campInfo} now={now} nav={nav} announcement={announcement} myTeam={myTeam}/>}
+      {page==='schedule'  &&<SchedulePage campInfo={campInfo} now={now} onBack={goHome} myTeam={myTeam}/>}
       {page==='scoreboard'&&<ScoreboardPage scores={currentScores} onBack={goHome}/>}
       {page==='map'       &&<MapPage onBack={goHome}/>}
       {page==='faq'       &&<FAQPage onBack={goHome}/>}
@@ -715,6 +873,7 @@ export default function CampHub(){
       {page==='freetime'  &&<FreeTimePage onBack={goHome}/>}
 
       {search&&<SearchOverlay onClose={()=>setSearch(false)} nav={(p)=>{nav(p);setSearch(false)}}/>}
+      {changingTeam&&<TeamChangeModal myTeam={myTeam} onSelect={selectTeam} onClose={()=>setChangingTeam(false)}/>}
     </div>
   )
 }
