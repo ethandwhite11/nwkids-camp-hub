@@ -12,15 +12,47 @@ const C = {
   green:'#52CC96',greenBg:'rgba(82,204,150,0.12)',
   blue:'#4A90E2',purple:'#B87AFF',
 }
-
 const TEAM = {
   red:   {color:'#FF4D4D',bg:'rgba(255,77,77,0.15)',   dark:'rgba(255,77,77,0.25)',   label:'Red'},
   yellow:{color:'#FFD700',bg:'rgba(255,215,0,0.15)',   dark:'rgba(255,215,0,0.25)',   label:'Yellow'},
   green: {color:'#4CAF50',bg:'rgba(76,175,80,0.15)',   dark:'rgba(76,175,80,0.25)',   label:'Green'},
   blue:  {color:'#4A90E2',bg:'rgba(74,144,226,0.15)',  dark:'rgba(74,144,226,0.25)',  label:'Blue'},
 }
+const DEFAULT_SCORES = {red:0,yellow:0,green:0,blue:0}
 
-const DEFAULT_SCORES = { red:0, yellow:0, green:0, blue:0 }
+// ─── GLOBAL CSS ───────────────────────────────────────────────────────────────
+const GLOBAL_CSS = `
+  @keyframes splashIcon {
+    0%   { opacity:0; transform:scale(0.5); }
+    60%  { opacity:1; transform:scale(1.12); }
+    80%  { transform:scale(0.96); }
+    100% { transform:scale(1); }
+  }
+  @keyframes splashText {
+    from { opacity:0; transform:translateY(10px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes slideInRight {
+    from { transform:translateX(100%); }
+    to   { transform:translateX(0); }
+  }
+  @keyframes slideInLeft {
+    from { opacity:0.6; transform:translateX(-28px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  @keyframes tabFade {
+    from { opacity:0; transform:scale(0.98) translateY(5px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(10px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  * { -webkit-tap-highlight-color:transparent; box-sizing:border-box; }
+  body { overscroll-behavior:none; }
+  input,textarea { -webkit-appearance:none; }
+  button { font-family:inherit; }
+`
 
 // ─── SCHEDULE DATA ────────────────────────────────────────────────────────────
 const SCHEDULE = {
@@ -53,7 +85,6 @@ const SCHEDULE = {
     {time:'9:30A',label:'Departure',emoji:'👋'},
   ],
 }
-
 const ROTATIONS = {
   2:{
     1:{yellow:'Lake',green:'Lake',blue:'Snack Shack',red:'Field Games'},
@@ -68,16 +99,14 @@ const ROTATIONS = {
     4:{yellow:'Lake',green:'Lake',blue:'Snack Shack',red:'Field Games'},
   },
 }
-
-const FAQ = [
+const FAQ=[
   {q:'What do I do if a camper gets hurt?',a:'For minor injuries, use the first aid kit in the supply cabin. For anything serious, call the nurse at ext. 105 immediately and stay with the camper until help arrives.'},
-  {q:'What if a camper is homesick?',a:'Acknowledge their feelings and redirect attention to an upcoming activity. If it escalates, notify leadership. Don\'t promise calls home without checking first.'},
+  {q:'What if a camper is homesick?',a:"Acknowledge their feelings and redirect attention to an upcoming activity. If it escalates, notify leadership. Don't promise calls home without checking first."},
   {q:'Can campers use their phones?',a:'Phones are collected at check-in and returned at departure. Emergency parent contact goes through the main office only.'},
   {q:'What is the protocol for a missing camper?',a:'Do not panic in front of other campers. Quick scan of immediate area, then immediately call the camp director. Never leave your group to search alone.'},
   {q:'When is quiet time?',a:'Quiet hours are 10:00 PM to 7:30 AM. All campers should be in their cabins and settled.'},
 ]
-
-const RULES = [
+const RULES=[
   'Leaders are responsible for their group at all times — know where your campers are.',
   'No camper should ever be alone with a single adult. Two-adult rule applies everywhere.',
   'Phones stay with camp leadership. Direct any camper requests to the main office.',
@@ -87,15 +116,13 @@ const RULES = [
   'Lights Out means quiet in cabins. Stay present until campers are settled.',
   'Encourage positive competition only. Respect all team colors.',
 ]
-
-const CONTACTS = [
+const CONTACTS=[
   {name:'Ethan',role:'Kids Pastor · Camp Director',note:'Main contact for anything'},
   {name:'Camp Nurse',role:'All medical needs',note:'Ext. 105 · Main lodge'},
   {name:'Front Desk',role:'Facilities & logistics',note:'Main building entrance'},
   {name:'Security',role:'Safety emergencies',note:'Call 911 first, then notify Ethan'},
 ]
-
-const FREE_TIME = [
+const FREE_TIME=[
   {icon:'🏊',name:'Lake & Swimming',note:'Open swim hours only, lifeguard must be present'},
   {icon:'🏓',name:'Ping Pong',note:'Tables in the rec hall — open all day'},
   {icon:'🎨',name:'Crafts',note:'Art supplies in Cabin B · Open 2:00–5:00 PM'},
@@ -106,16 +133,10 @@ const FREE_TIME = [
 ]
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
-function parseTime(t) {
-  const p=t.slice(-1);const[h,m]=t.slice(0,-1).split(':').map(Number)
-  let hr=h;if(p==='P'&&h!==12)hr+=12;if(p==='A'&&h===12)hr=0
-  return hr*60+(m||0)
-}
+function parseTime(t){const p=t.slice(-1);const[h,m]=t.slice(0,-1).split(':').map(Number);let hr=h;if(p==='P'&&h!==12)hr+=12;if(p==='A'&&h===12)hr=0;return hr*60+(m||0)}
 function dispTime(t){return t.slice(0,-1)+(t.endsWith('A')?' AM':' PM')}
-
-function getCampInfo(now) {
-  const mo=now.getMonth()+1,d=now.getDate(),y=now.getFullYear()
-  const tm=now.getHours()*60+now.getMinutes()
+function getCampInfo(now){
+  const mo=now.getMonth()+1,d=now.getDate(),y=now.getFullYear(),tm=now.getHours()*60+now.getMinutes()
   if(y===2026&&mo===8){
     if(d===2)return{camp:'West One',campKey:'west1',day:1}
     if(d===3)return{camp:'West One',campKey:'west1',day:2}
@@ -128,17 +149,11 @@ function getCampInfo(now) {
   }
   return null
 }
-function getSchedule(day){
-  if(day===1)return SCHEDULE[1]
-  if(day===2||day===3)return SCHEDULE['2-3']
-  if(day===4)return SCHEDULE[4]
-  return[]
-}
+function getSchedule(day){if(day===1)return SCHEDULE[1];if(day===2||day===3)return SCHEDULE['2-3'];if(day===4)return SCHEDULE[4];return[]}
 function getCurrentActivity(sched,now){
   const tm=now.getHours()*60+now.getMinutes()
   for(let i=0;i<sched.length;i++){
-    const s=parseTime(sched[i].time)
-    const e=i<sched.length-1?parseTime(sched[i+1].time):24*60
+    const s=parseTime(sched[i].time),e=i<sched.length-1?parseTime(sched[i+1].time):24*60
     if(tm>=s&&tm<e)return{current:sched[i],next:sched[i+1]||null,minIn:tm-s,duration:e-s}
   }
   if(tm<parseTime(sched[0].time))return{current:null,next:sched[0],minUntil:parseTime(sched[0].time)-tm,duration:0}
@@ -146,24 +161,49 @@ function getCurrentActivity(sched,now){
 }
 
 // ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
-function SCard({children,style}){
-  return <div style={{background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,padding:'14px 16px',marginBottom:10,...style}}>{children}</div>
-}
-function SecLabel({children}){
-  return <p style={{margin:'20px 0 10px',fontSize:12,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>{children}</p>
-}
+function SCard({children,style}){return <div style={{background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,padding:'14px 16px',marginBottom:10,...style}}>{children}</div>}
+function SecLabel({children}){return <p style={{margin:'20px 0 10px',fontSize:12,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>{children}</p>}
 function BackHeader({title,onBack}){
   return(
-    <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${C.border}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
-      <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',color:C.accent,fontSize:26,padding:0,lineHeight:1}}>‹</button>
-      <h2 style={{margin:0,fontSize:20,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>{title}</h2>
+    <div style={{padding:'calc(14px + env(safe-area-inset-top,0px)) 16px 14px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${C.border}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
+      <Tap onClick={onBack} style={{color:C.accent,fontSize:26,lineHeight:1,padding:'4px 6px 4px 0'}}>‹</Tap>
+      <h2 style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>{title}</h2>
     </div>
   )
 }
 function ProgressBar({progress,color,height=4}){
+  return <div style={{height,background:'rgba(255,255,255,0.1)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(100,Math.max(0,progress*100))}%`,background:color,borderRadius:99,transition:'width 60s linear'}}/></div>
+}
+function Tap({onClick,children,style}){
+  const[p,setP]=useState(false)
   return(
-    <div style={{height,background:'rgba(255,255,255,0.1)',borderRadius:99,overflow:'hidden'}}>
-      <div style={{height:'100%',width:`${Math.min(100,Math.max(0,progress*100))}%`,background:color,borderRadius:99,transition:'width 60s linear'}}/>
+    <div onClick={onClick} onPointerDown={()=>setP(true)} onPointerUp={()=>setP(false)} onPointerCancel={()=>setP(false)} onPointerLeave={()=>setP(false)}
+      style={{...style,transform:p?'scale(0.95)':'scale(1)',transition:p?'transform 0.07s ease':'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
+      {children}
+    </div>
+  )
+}
+
+// ─── SPLASH SCREEN ────────────────────────────────────────────────────────────
+function SplashScreen({onDone}){
+  const[exiting,setExiting]=useState(false)
+  useEffect(()=>{
+    const t1=setTimeout(()=>setExiting(true),1400)
+    const t2=setTimeout(onDone,1900)
+    return()=>{clearTimeout(t1);clearTimeout(t2)}
+  },[])
+  return(
+    <div style={{
+      position:'fixed',inset:0,zIndex:1000,
+      background:C.bg,
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      opacity:exiting?0:1,transition:exiting?'opacity 0.5s ease':'none',
+      backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 14px)',
+    }}>
+      <img src="/apple-touch-icon.png" alt="NW Kids"
+        style={{width:160,height:160,borderRadius:36,marginBottom:28,animation:'splashIcon 0.75s cubic-bezier(0.34,1.56,0.64,1) forwards'}}/>
+      <p style={{margin:'0 0 4px',fontFamily:"'Oswald',sans-serif",fontSize:14,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:C.yellow,animation:'splashText 0.5s ease 0.4s both'}}>NW Kids</p>
+      <p style={{margin:0,fontFamily:"'Oswald',sans-serif",fontSize:28,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',color:C.text,animation:'splashText 0.5s ease 0.5s both'}}>Summer Camp</p>
     </div>
   )
 }
@@ -172,44 +212,32 @@ function ProgressBar({progress,color,height=4}){
 function TeamPicker({onSelect}){
   const[selected,setSelected]=useState(null)
   return(
-    <div style={{
-      minHeight:'100vh',background:C.bg,display:'flex',flexDirection:'column',
-      padding:'52px 24px 40px',
-      backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 14px)',
-    }}>
-      <div style={{marginBottom:36}}>
+    <div style={{minHeight:'100vh',background:C.bg,display:'flex',flexDirection:'column',padding:'calc(52px + env(safe-area-inset-top,0px)) 24px calc(40px + env(safe-area-inset-bottom,0px))',backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 14px)',animation:'fadeUp 0.4s ease both'}}>
+      <div style={{marginBottom:32}}>
         <p style={{margin:'0 0 2px',fontSize:14,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>NW Kids</p>
-        <h1 style={{margin:'0 0 4px',fontSize:36,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>Summer Camp</h1>
-        <p style={{margin:'12px 0 0',fontSize:15,color:C.muted,lineHeight:1.5}}>Select your team to get a personalized view of rotations and the schedule.</p>
+        <h1 style={{margin:'0 0 10px',fontSize:38,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>Summer Camp</h1>
+        <p style={{margin:0,fontSize:15,color:C.muted,lineHeight:1.5}}>Select your team for a personalized experience throughout camp.</p>
       </div>
-
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,flex:1}}>
         {Object.entries(TEAM).map(([key,t])=>(
-          <button key={key} onClick={()=>setSelected(key)} style={{
+          <Tap key={key} onClick={()=>setSelected(key)} style={{
             background:selected===key?t.dark:C.surface,
             border:`2px solid ${selected===key?t.color:C.border}`,
-            borderRadius:20,padding:'28px 16px',cursor:'pointer',textAlign:'center',
-            transition:'all 0.15s',transform:selected===key?'scale(1.03)':'scale(1)',
+            borderRadius:20,padding:'28px 16px',textAlign:'center',
           }}>
-            <div style={{width:44,height:44,borderRadius:'50%',background:t.color,margin:'0 auto 14px',boxShadow:selected===key?`0 0 20px ${t.color}60`:null}}/>
-            <p style={{margin:0,fontSize:17,fontWeight:700,color:selected===key?t.color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{t.label}</p>
-            <p style={{margin:'3px 0 0',fontSize:12,color:C.muted}}>Team</p>
-          </button>
+            <div style={{width:48,height:48,borderRadius:'50%',background:t.color,margin:'0 auto 14px',boxShadow:selected===key?`0 0 24px ${t.color}70`:null}}/>
+            <p style={{margin:0,fontSize:18,fontWeight:700,color:selected===key?t.color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{t.label}</p>
+          </Tap>
         ))}
       </div>
-
-      <button
-        onClick={()=>selected&&onSelect(selected)}
-        style={{
-          marginTop:24,padding:'15px',borderRadius:14,
-          background:selected?TEAM[selected].color:'rgba(255,255,255,0.1)',
-          border:'none',color:selected?'#fff':C.muted,
-          fontSize:16,fontWeight:700,cursor:selected?'pointer':'default',
-          fontFamily:"'Oswald',sans-serif",letterSpacing:'0.08em',textTransform:'uppercase',
-          transition:'all 0.2s',
-        }}>
-        {selected?`I'm on ${TEAM[selected].label} Team →`:'Select a team above'}
-      </button>
+      <Tap onClick={()=>selected&&onSelect(selected)} style={{
+        marginTop:24,padding:'15px',borderRadius:14,textAlign:'center',
+        background:selected?TEAM[selected].color:'rgba(255,255,255,0.1)',
+      }}>
+        <span style={{fontSize:16,fontWeight:700,color:selected?'#fff':C.muted,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.08em',textTransform:'uppercase'}}>
+          {selected?`I'm on ${TEAM[selected].label} Team →`:'Select a team above'}
+        </span>
+      </Tap>
     </div>
   )
 }
@@ -217,45 +245,42 @@ function TeamPicker({onSelect}){
 // ─── TEAM CHANGE MODAL ────────────────────────────────────────────────────────
 function TeamChangeModal({myTeam,onSelect,onClose}){
   return(
-    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:200,display:'flex',alignItems:'flex-end'}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:C.surface,width:'100%',borderRadius:'20px 20px 0 0',padding:'24px 20px 44px',border:`1px solid ${C.border}`}}>
-        <p style={{margin:'0 0 16px',fontSize:18,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>Change Team</p>
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.65)',zIndex:200,display:'flex',alignItems:'flex-end'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:C.surface,width:'100%',borderRadius:'24px 24px 0 0',padding:`24px 20px calc(28px + env(safe-area-inset-bottom,0px))`,border:`1px solid ${C.border}`}}>
+        <p style={{margin:'0 0 16px',fontSize:20,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>Change Team</p>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
           {Object.entries(TEAM).map(([key,t])=>(
-            <button key={key} onClick={()=>{onSelect(key);onClose()}} style={{
-              padding:'14px',borderRadius:12,cursor:'pointer',
+            <Tap key={key} onClick={()=>{onSelect(key);onClose()}} style={{
+              padding:'14px',borderRadius:12,
               background:myTeam===key?t.bg:'transparent',
               border:`1.5px solid ${myTeam===key?t.color:C.border}`,
               display:'flex',alignItems:'center',gap:10,
             }}>
               <div style={{width:12,height:12,borderRadius:'50%',background:t.color,flexShrink:0}}/>
               <span style={{fontSize:15,fontWeight:700,color:myTeam===key?t.color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em',textTransform:'uppercase'}}>{t.label}</span>
-            </button>
+            </Tap>
           ))}
         </div>
-        <button onClick={onClose} style={{width:'100%',padding:'12px',borderRadius:10,background:'transparent',border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>
-          Cancel
-        </button>
+        <Tap onClick={onClose} style={{width:'100%',padding:'12px',borderRadius:10,background:'transparent',border:`1px solid ${C.border}`,textAlign:'center'}}>
+          <span style={{fontSize:14,color:C.muted}}>Cancel</span>
+        </Tap>
       </div>
     </div>
   )
 }
 
 // ─── NOW BANNER ───────────────────────────────────────────────────────────────
-function NowBanner({campInfo,now,myTeam}){
+function NowBanner({campInfo,now,myTeam,onViewSchedule}){
   if(!campInfo){
     const before=now<new Date('2026-08-02')
     const days=Math.ceil((new Date('2026-08-02')-now)/(1000*60*60*24))
     return(
-      <SCard>
-        <p style={{margin:0,fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>Camp Status</p>
-        <p style={{margin:'4px 0 0',fontSize:22,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
-          {before?`West One in ${days} days`:'Camp wrapped. See you next year.'}
-        </p>
+      <SCard style={{marginBottom:0}}>
+        <p style={{margin:0,fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>Camp Status</p>
+        <p style={{margin:'4px 0 0',fontSize:24,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{before?`West One in ${days} days`:'Camp wrapped. See you next year.'}</p>
       </SCard>
     )
   }
-
   const sched=getSchedule(campInfo.day)
   const{current,next,minIn,minUntil,duration}=getCurrentActivity(sched,now)
   const rots=(campInfo.day===2||campInfo.day===3)?ROTATIONS[campInfo.day]:null
@@ -263,10 +288,10 @@ function NowBanner({campInfo,now,myTeam}){
   const remaining=duration-minIn
   const progress=duration>0?minIn/duration:0
 
-  const BannerWrap=({children})=>(
+  const Wrap=({children})=>(
     <div style={{
       background:'linear-gradient(150deg,#1D5A3F 0%,#0A3025 100%)',
-      borderRadius:16,padding:18,marginBottom:12,
+      borderRadius:16,padding:18,marginBottom:0,
       border:`1px solid ${isRot&&myTeam?TEAM[myTeam].color+'50':C.accentBdr}`,
       backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 1px,transparent 1px,transparent 12px)',
     }}>
@@ -275,76 +300,53 @@ function NowBanner({campInfo,now,myTeam}){
           <div style={{width:8,height:8,borderRadius:'50%',background:C.green,boxShadow:`0 0 6px ${C.green}`}}/>
           <span style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.green,fontFamily:"'Oswald',sans-serif"}}>Live Now</span>
         </div>
-        <span style={{fontSize:11,fontWeight:600,color:C.muted,background:C.surface,padding:'3px 10px',borderRadius:99,border:`1px solid ${C.border}`}}>
-          {campInfo.camp} · Day {campInfo.day}
-        </span>
+        <span style={{fontSize:11,fontWeight:600,color:C.muted,background:C.surface,padding:'3px 10px',borderRadius:99,border:`1px solid ${C.border}`}}>{campInfo.camp} · Day {campInfo.day}</span>
       </div>
       {children}
+      {onViewSchedule&&(
+        <Tap onClick={onViewSchedule} style={{marginTop:12,borderTop:`1px solid ${C.border}`,paddingTop:10,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span style={{fontSize:12,color:C.muted,fontWeight:600}}>View full schedule</span>
+          <span style={{fontSize:14,color:C.accent}}>›</span>
+        </Tap>
+      )}
     </div>
   )
 
-  if(!current){
-    return(
-      <BannerWrap>
-        <p style={{margin:'4px 0 0',fontSize:20,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>
-          {next?.emoji} {next?.label} in {minUntil} min
-        </p>
-      </BannerWrap>
-    )
-  }
+  if(!current){return<Wrap><p style={{margin:'4px 0',fontSize:22,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{next?.emoji} {next?.label} in {minUntil} min</p></Wrap>}
 
-  // ── Rotation + team selected ────────────────────────────────────────────────
   if(isRot&&myTeam&&rots){
-    const t=TEAM[myTeam]
-    const myLocation=rots[current.rotNum]?.[myTeam]||'—'
-    const others=Object.entries(TEAM).filter(([k])=>k!==myTeam)
+    const t=TEAM[myTeam],myLoc=rots[current.rotNum]?.[myTeam]||'—'
     return(
-      <BannerWrap>
-        <p style={{margin:'0 0 10px',fontSize:13,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>
-          {current.emoji} {current.label}
-        </p>
-
-        {/* Your team card */}
-        <div style={{background:t.dark,border:`1.5px solid ${t.color}60`,borderRadius:12,padding:'14px 16px',marginBottom:10}}>
+      <Wrap>
+        <p style={{margin:'0 0 10px',fontSize:13,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.muted,fontFamily:"'Oswald',sans-serif"}}>{current.emoji} {current.label}</p>
+        <div style={{background:t.dark,border:`1.5px solid ${t.color}60`,borderRadius:12,padding:'14px 16px',marginBottom:8}}>
           <p style={{margin:'0 0 4px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:t.color,fontFamily:"'Oswald',sans-serif"}}>{t.label} Team · Your Location</p>
-          <p style={{margin:'0 0 12px',fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1}}>{myLocation}</p>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
-            <p style={{margin:0,fontSize:13,fontWeight:600,color:t.color}}>{remaining} min left</p>
-            <div style={{flex:1}}>
-              <ProgressBar progress={progress} color={t.color}/>
-            </div>
+          <p style={{margin:'0 0 12px',fontSize:32,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1}}>{myLoc}</p>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <p style={{margin:0,fontSize:13,fontWeight:600,color:t.color,whiteSpace:'nowrap'}}>{remaining} min left</p>
+            <div style={{flex:1}}><ProgressBar progress={progress} color={t.color}/></div>
           </div>
         </div>
-
-        {/* Other teams compact */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
-          {others.map(([k,ot])=>(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5}}>
+          {Object.entries(TEAM).filter(([k])=>k!==myTeam).map(([k,ot])=>(
             <div key={k} style={{background:'rgba(0,0,0,0.2)',borderRadius:8,padding:'7px 8px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
-                <div style={{width:7,height:7,borderRadius:'50%',background:ot.color,flexShrink:0}}/>
+              <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:2}}>
+                <div style={{width:6,height:6,borderRadius:'50%',background:ot.color,flexShrink:0}}/>
                 <span style={{fontSize:10,fontWeight:700,color:ot.color,textTransform:'uppercase',letterSpacing:'0.04em',fontFamily:"'Oswald',sans-serif"}}>{ot.label}</span>
               </div>
               <p style={{margin:0,fontSize:12,fontWeight:600,color:C.mutedLight}}>{rots[current.rotNum]?.[k]||'—'}</p>
             </div>
           ))}
         </div>
-
-        {next&&(
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
-            <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
-          </div>
-        )}
-      </BannerWrap>
+      </Wrap>
     )
   }
 
-  // ── Rotation, no team selected ──────────────────────────────────────────────
   if(isRot&&rots){
     return(
-      <BannerWrap>
-        <p style={{margin:'0 0 10px',fontSize:22,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{current.emoji} {current.label}</p>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:10}}>
+      <Wrap>
+        <p style={{margin:'0 0 10px',fontSize:24,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{current.emoji} {current.label}</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:8}}>
           {Object.entries(TEAM).map(([k,t])=>(
             <div key={k} style={{background:t.bg,borderRadius:9,padding:'8px 11px',border:`1px solid ${t.color}25`}}>
               <p style={{margin:'0 0 2px',fontSize:10,fontWeight:700,color:t.color,textTransform:'uppercase',letterSpacing:'0.04em',fontFamily:"'Oswald',sans-serif"}}>{t.label}</p>
@@ -352,71 +354,89 @@ function NowBanner({campInfo,now,myTeam}){
             </div>
           ))}
         </div>
-        <div style={{background:C.accentBg,borderRadius:8,padding:'8px 12px',marginBottom:10,border:`1px solid ${C.accentBdr}`}}>
-          <p style={{margin:0,fontSize:12,color:C.accent,fontWeight:600}}>💡 Select your team in the header for a personalized view</p>
+        <div style={{background:C.accentBg,borderRadius:8,padding:'8px 12px',border:`1px solid ${C.accentBdr}`}}>
+          <p style={{margin:0,fontSize:12,color:C.accent,fontWeight:600}}>💡 Tap your team in the header for a personalized view</p>
         </div>
-        {next&&(
-          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
-            <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
-          </div>
-        )}
-      </BannerWrap>
+      </Wrap>
     )
   }
 
-  // ── Regular activity ────────────────────────────────────────────────────────
   return(
-    <BannerWrap>
-      <p style={{margin:'0 0 2px',fontSize:26,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1.1}}>{current.emoji} {current.label}</p>
-      <p style={{margin:'4px 0 12px',fontSize:12,color:C.muted}}>{minIn} min in · {remaining} min left</p>
+    <Wrap>
+      <p style={{margin:'0 0 2px',fontSize:28,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1.1}}>{current.emoji} {current.label}</p>
+      <p style={{margin:'4px 0 12px',fontSize:12,color:C.muted}}>{minIn} min in · {remaining} min remaining</p>
       <ProgressBar progress={progress} color={C.accent}/>
-      {next&&(
-        <div style={{marginTop:10,borderTop:`1px solid ${C.border}`,paddingTop:8,display:'flex',alignItems:'center',gap:6}}>
-          <span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span>
-          <span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span>
-        </div>
-      )}
-    </BannerWrap>
+      {next&&<div style={{marginTop:10,display:'flex',alignItems:'center',gap:6}}><span style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:'0.06em',textTransform:'uppercase',fontFamily:"'Oswald',sans-serif"}}>Next</span><span style={{fontSize:13,fontWeight:600,color:C.mutedLight}}>{next.emoji} {next.label} · {dispTime(next.time)}</span></div>}
+    </Wrap>
+  )
+}
+
+// ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
+const TABS=[
+  {id:'home',  label:'Home',    isLogo:true},
+  {id:'schedule',label:'Schedule',emoji:'📅'},
+  {id:'scoreboard',label:'Camp Cup',emoji:'🏆'},
+  {id:'map',   label:'Map',     emoji:'🗺️'},
+]
+function BottomNav({page,nav}){
+  return(
+    <div style={{
+      position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',
+      width:'100%',maxWidth:430,
+      background:C.surface,borderTop:`1px solid ${C.border}`,
+      paddingBottom:'env(safe-area-inset-bottom,0px)',
+      display:'flex',zIndex:50,
+    }}>
+      {TABS.map(tab=>{
+        const active=page===tab.id
+        return(
+          <button key={tab.id} onClick={()=>nav(tab.id,false)} style={{
+            flex:1,background:'none',border:'none',cursor:'pointer',
+            padding:'10px 0 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+          }}>
+            <div style={{height:3,width:20,borderRadius:99,background:active?C.yellow:'transparent',marginBottom:4,transition:'background 0.2s'}}/>
+            {tab.isLogo
+              ?<img src="/apple-touch-icon.png" alt="Home" style={{width:24,height:24,borderRadius:5,opacity:active?1:0.35,transition:'opacity 0.2s'}}/>
+              :<span style={{fontSize:22,opacity:active?1:0.35,transition:'opacity 0.2s'}}>{tab.emoji}</span>
+            }
+            <span style={{fontSize:10,fontWeight:active?700:400,color:active?C.yellow:C.muted,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.08em',textTransform:'uppercase',transition:'color 0.2s'}}>{tab.label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
 // ─── HOME SCREEN ──────────────────────────────────────────────────────────────
-const CARDS=[
-  {id:'schedule',emoji:'📅',label:'Schedule',sub:'Full daily timeline',wide:true},
-  {id:'scoreboard',emoji:'🏆',label:'Camp Cup',sub:'Live team scores'},
-  {id:'map',emoji:'🗺️',label:'Map',sub:'Camp layout'},
-  {id:'faq',emoji:'❓',label:'FAQ',sub:'Common questions'},
-  {id:'rules',emoji:'📋',label:'Rules',sub:'Camp guidelines'},
-  {id:'contacts',emoji:'👥',label:'Contacts',sub:'Leadership team'},
-  {id:'freetime',emoji:'🎯',label:'Free Time',sub:'Things to do'},
+const HOME_CARDS=[
+  {id:'faq',      emoji:'❓',label:'FAQ',       sub:'Common questions'},
+  {id:'rules',    emoji:'📋',label:'Rules',     sub:'Camp guidelines'},
+  {id:'contacts', emoji:'👥',label:'Contacts',  sub:'Leadership team'},
+  {id:'freetime', emoji:'🎯',label:'Free Time', sub:'Things to do'},
 ]
 function HomeScreen({campInfo,now,nav,announcement,myTeam}){
   return(
-    <div style={{padding:'16px 16px 32px'}}>
+    <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
       {announcement&&(
-        <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBdr}`,borderRadius:12,padding:'10px 14px',marginBottom:12,display:'flex',gap:10,alignItems:'flex-start'}}>
+        <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBdr}`,borderRadius:12,padding:'10px 14px',marginBottom:12,display:'flex',gap:10,alignItems:'flex-start',animation:'fadeUp 0.3s ease both'}}>
           <span style={{fontSize:16,flexShrink:0}}>📢</span>
           <p style={{margin:0,fontSize:14,fontWeight:600,color:C.yellow,lineHeight:1.4}}>{announcement}</p>
         </div>
       )}
-      <NowBanner campInfo={campInfo} now={now} myTeam={myTeam}/>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-        {CARDS.map(card=>(
-          <button key={card.id} onClick={()=>nav(card.id)} style={{
-            gridColumn:card.wide?'1 / -1':'auto',
+      <div style={{marginBottom:12,animation:'fadeUp 0.35s ease 0.05s both'}}>
+        <NowBanner campInfo={campInfo} now={now} myTeam={myTeam} onViewSchedule={()=>nav('schedule',false)}/>
+      </div>
+      <SecLabel>More</SecLabel>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,animation:'fadeUp 0.35s ease 0.1s both'}}>
+        {HOME_CARDS.map(card=>(
+          <Tap key={card.id} onClick={()=>nav(card.id,true)} style={{
             background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,
-            padding:card.wide?'16px 20px':'18px 16px',
-            cursor:'pointer',textAlign:'left',
-            display:card.wide?'flex':'block',alignItems:'center',gap:14,
+            padding:'20px 16px',textAlign:'left',
           }}>
-            <span style={{fontSize:card.wide?28:32,display:'block',marginBottom:card.wide?0:10}}>{card.emoji}</span>
-            <div style={{flex:1}}>
-              <p style={{margin:0,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em',textTransform:'uppercase'}}>{card.label}</p>
-              <p style={{margin:'3px 0 0',fontSize:12,color:C.muted}}>{card.sub}</p>
-            </div>
-            {card.wide&&<span style={{color:C.muted,fontSize:22}}>›</span>}
-          </button>
+            <span style={{fontSize:30,display:'block',marginBottom:10}}>{card.emoji}</span>
+            <p style={{margin:0,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em',textTransform:'uppercase'}}>{card.label}</p>
+            <p style={{margin:'3px 0 0',fontSize:12,color:C.muted}}>{card.sub}</p>
+          </Tap>
         ))}
       </div>
     </div>
@@ -424,27 +444,23 @@ function HomeScreen({campInfo,now,nav,announcement,myTeam}){
 }
 
 // ─── SCHEDULE PAGE ────────────────────────────────────────────────────────────
-function SchedulePage({campInfo,now,onBack,myTeam}){
+function SchedulePage({campInfo,now,myTeam}){
   const[day,setDay]=useState(campInfo?.day||2)
   const sched=getSchedule(day)
   const tm=now.getHours()*60+now.getMinutes()
   const rots=(day===2||day===3)?ROTATIONS[day]:null
   return(
     <div>
-      <BackHeader title="Schedule" onBack={onBack}/>
-      <div style={{padding:'12px 16px 0',display:'flex',gap:8}}>
-        {[1,2,3,4].map(d=>(
-          <button key={d} onClick={()=>setDay(d)} style={{
-            flex:1,padding:'8px 0',borderRadius:10,
-            border:`1px solid ${day===d?C.accent:C.border}`,
-            background:day===d?C.accentBg:'transparent',
-            color:day===d?C.accent:C.muted,
-            fontWeight:day===d?700:400,fontSize:13,cursor:'pointer',fontFamily:'inherit',
-          }}>Day {d}</button>
-        ))}
+      <div style={{padding:'calc(14px + env(safe-area-inset-top,0px)) 16px 12px',borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,background:C.bg,zIndex:10}}>
+        <h2 style={{margin:'0 0 12px',fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>Schedule</h2>
+        <div style={{display:'flex',gap:8}}>
+          {[1,2,3,4].map(d=>(
+            <button key={d} onClick={()=>setDay(d)} style={{flex:1,padding:'8px 0',borderRadius:10,border:`1px solid ${day===d?C.accent:C.border}`,background:day===d?C.accentBg:'transparent',color:day===d?C.accent:C.muted,fontWeight:day===d?700:400,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Day {d}</button>
+          ))}
+        </div>
+        {rots&&<p style={{margin:'10px 0 0',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>{day===2?'Monday / Thursday':'Tuesday / Friday'} Rotation</p>}
       </div>
-      {rots&&<p style={{margin:'10px 16px 0',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>{day===2?'Monday / Thursday':'Tuesday / Friday'} Rotation</p>}
-      <div style={{padding:'12px 16px 90px'}}>
+      <div style={{padding:'12px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         {sched.map((item,i)=>{
           const s=parseTime(item.time),e=i<sched.length-1?parseTime(sched[i+1].time):24*60
           const isCur=campInfo?.day===day&&tm>=s&&tm<e
@@ -461,19 +477,13 @@ function SchedulePage({campInfo,now,onBack,myTeam}){
                   {item.isRotation&&rots&&(
                     <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:4}}>
                       {Object.entries(TEAM).map(([k,t])=>{
-                        const isMyTeam=myTeam===k
+                        const isMe=myTeam===k
                         return(
-                          <div key={k} style={{
-                            display:'flex',alignItems:'center',gap:8,
-                            background:isMyTeam?t.bg:'transparent',
-                            borderRadius:isMyTeam?8:0,
-                            padding:isMyTeam?'5px 8px':'2px 0',
-                            border:isMyTeam?`1px solid ${t.color}40`:'none',
-                          }}>
-                            <div style={{width:8,height:8,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-                            <span style={{fontSize:12,color:isMyTeam?t.color:C.muted,fontWeight:isMyTeam?700:400}}>{t.label}:</span>
-                            <span style={{fontSize:12,fontWeight:isMyTeam?700:500,color:isMyTeam?C.text:C.mutedLight,flex:1}}>{rots[item.rotNum]?.[k]}</span>
-                            {isMyTeam&&<span style={{fontSize:10,fontWeight:700,color:t.color,background:`${t.color}20`,padding:'1px 6px',borderRadius:4,textTransform:'uppercase',letterSpacing:'0.04em'}}>You</span>}
+                          <div key={k} style={{display:'flex',alignItems:'center',gap:8,background:isMe?t.bg:'transparent',borderRadius:isMe?8:0,padding:isMe?'5px 8px':'2px 0',border:isMe?`1px solid ${t.color}40`:'none'}}>
+                            <div style={{width:7,height:7,borderRadius:'50%',background:t.color,flexShrink:0}}/>
+                            <span style={{fontSize:12,color:isMe?t.color:C.muted,fontWeight:isMe?700:400}}>{t.label}:</span>
+                            <span style={{fontSize:12,fontWeight:isMe?700:500,color:isMe?C.text:C.mutedLight,flex:1}}>{rots[item.rotNum]?.[k]}</span>
+                            {isMe&&<span style={{fontSize:10,fontWeight:700,color:t.color,background:`${t.color}20`,padding:'1px 6px',borderRadius:4,textTransform:'uppercase',letterSpacing:'0.04em',fontFamily:"'Oswald',sans-serif"}}>You</span>}
                           </div>
                         )
                       })}
@@ -490,22 +500,24 @@ function SchedulePage({campInfo,now,onBack,myTeam}){
 }
 
 // ─── SCOREBOARD ───────────────────────────────────────────────────────────────
-function ScoreboardPage({scores,onBack}){
+function ScoreboardPage({scores}){
   const sorted=[...Object.entries(scores)].sort(([,a],[,b])=>b-a)
   const medals=['🥇','🥈','🥉','4']
   return(
     <div>
-      <BackHeader title="Camp Cup" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
-        <p style={{margin:'0 0 16px',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>Live · Updates in real time</p>
+      <div style={{padding:'calc(14px + env(safe-area-inset-top,0px)) 16px 12px',borderBottom:`1px solid ${C.border}`}}>
+        <h2 style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>Camp Cup</h2>
+        <p style={{margin:'4px 0 0',fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',fontFamily:"'Oswald',sans-serif"}}>Live · Updates in real time</p>
+      </div>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         {sorted.map(([k,score],i)=>{
           const t=TEAM[k],leading=k===sorted[0][0]&&score>0
           return(
-            <div key={k} style={{background:leading?t.bg:C.surface,borderRadius:16,padding:'16px 20px',marginBottom:10,border:`1px solid ${leading?t.color+'60':C.border}`,display:'flex',alignItems:'center',gap:14}}>
+            <div key={k} style={{background:leading?t.bg:C.surface,borderRadius:16,padding:'18px 20px',marginBottom:10,border:`1px solid ${leading?t.color+'60':C.border}`,display:'flex',alignItems:'center',gap:14,animation:`fadeUp 0.3s ease ${i*0.07}s both`}}>
               <span style={{fontSize:22,width:28,textAlign:'center'}}>{medals[i]}</span>
               <div style={{width:14,height:14,borderRadius:'50%',background:t.color,flexShrink:0}}/>
-              <p style={{margin:0,fontSize:18,fontWeight:700,color:C.text,flex:1,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label} Team</p>
-              <p style={{margin:0,fontSize:32,fontWeight:700,color:leading?t.color:C.text,minWidth:50,textAlign:'right',fontFamily:"'Oswald',sans-serif"}}>{score}</p>
+              <p style={{margin:0,fontSize:20,fontWeight:700,color:C.text,flex:1,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label}</p>
+              <p style={{margin:0,fontSize:36,fontWeight:700,color:leading?t.color:C.text,minWidth:50,textAlign:'right',fontFamily:"'Oswald',sans-serif"}}>{score}</p>
             </div>
           )
         })}
@@ -515,11 +527,13 @@ function ScoreboardPage({scores,onBack}){
 }
 
 // ─── MAP ──────────────────────────────────────────────────────────────────────
-function MapPage({onBack}){
+function MapPage(){
   return(
     <div>
-      <BackHeader title="Camp Map" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
+      <div style={{padding:'calc(14px + env(safe-area-inset-top,0px)) 16px 12px',borderBottom:`1px solid ${C.border}`}}>
+        <h2 style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif"}}>Camp Map</h2>
+      </div>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         <SCard style={{padding:16}}>
           <svg viewBox="0 0 320 260" style={{width:'100%',height:'auto'}}>
             <rect x="8" y="8" width="145" height="75" rx="8" fill="rgba(82,204,150,0.12)" stroke="#52CC96" strokeWidth="1.5"/>
@@ -554,14 +568,14 @@ function FAQPage({onBack}){
   return(
     <div>
       <BackHeader title="FAQ" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         {FAQ.map((item,i)=>(
           <div key={i} style={{background:C.surface,borderRadius:14,border:`1px solid ${open===i?C.accentBdr:C.border}`,marginBottom:8,overflow:'hidden'}}>
-            <button onClick={()=>setOpen(open===i?null:i)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',padding:'14px 16px',background:'none',border:'none',cursor:'pointer',textAlign:'left',gap:10,fontFamily:'inherit'}}>
+            <Tap onClick={()=>setOpen(open===i?null:i)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',gap:10}}>
               <p style={{margin:0,fontSize:14,fontWeight:600,color:open===i?C.accent:C.text,flex:1}}>{item.q}</p>
               <span style={{color:C.muted,fontSize:18,transform:open===i?'rotate(90deg)':'none',transition:'transform 0.2s',flexShrink:0}}>›</span>
-            </button>
-            {open===i&&<div style={{padding:'10px 16px 14px',fontSize:13,color:C.muted,lineHeight:1.6,borderTop:`1px solid ${C.border}`}}>{item.a}</div>}
+            </Tap>
+            {open===i&&<div style={{padding:'0 16px 14px',paddingTop:10,fontSize:13,color:C.muted,lineHeight:1.6,borderTop:`1px solid ${C.border}`}}>{item.a}</div>}
           </div>
         ))}
       </div>
@@ -574,7 +588,7 @@ function RulesPage({onBack}){
   return(
     <div>
       <BackHeader title="Rules" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         {RULES.map((rule,i)=>(
           <SCard key={i} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
             <div style={{width:24,height:24,borderRadius:7,background:C.accentBg,color:C.accent,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0,marginTop:1,fontFamily:"'Oswald',sans-serif"}}>{i+1}</div>
@@ -591,14 +605,14 @@ function ContactsPage({onBack}){
   return(
     <div>
       <BackHeader title="Contacts" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         <SCard style={{background:'rgba(255,59,48,0.08)',border:'1px solid rgba(255,59,48,0.2)'}}>
           <p style={{margin:'0 0 4px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'#FF3B30',fontFamily:"'Oswald',sans-serif"}}>🚨 Emergency</p>
           <p style={{margin:0,fontSize:14,color:C.text}}>Call <strong>911</strong> first for any life-threatening situation, then alert Ethan.</p>
         </SCard>
         {CONTACTS.map((c,i)=>(
           <SCard key={i}>
-            <p style={{margin:'0 0 2px',fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{c.name}</p>
+            <p style={{margin:'0 0 2px',fontSize:17,fontWeight:700,color:C.text,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{c.name}</p>
             <p style={{margin:'0 0 6px',fontSize:13,color:C.accent}}>{c.role}</p>
             <p style={{margin:0,fontSize:12,color:C.muted}}>{c.note}</p>
           </SCard>
@@ -613,8 +627,7 @@ function FreeTimePage({onBack}){
   return(
     <div>
       <BackHeader title="Free Time" onBack={onBack}/>
-      <div style={{padding:'16px 16px 90px'}}>
-        <p style={{margin:'0 0 16px',fontSize:13,color:C.muted}}>Activities available during unstructured time</p>
+      <div style={{padding:'16px 16px calc(90px + env(safe-area-inset-bottom,0px))'}}>
         {FREE_TIME.map((item,i)=>(
           <SCard key={i} style={{display:'flex',gap:14,alignItems:'center'}}>
             <span style={{fontSize:26,flexShrink:0}}>{item.icon}</span>
@@ -631,47 +644,40 @@ function FreeTimePage({onBack}){
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
 const SEARCHABLE=[
-  ...FAQ.map(f=>({type:'FAQ',title:f.q,body:f.a,page:'faq'})),
-  ...RULES.map((r,i)=>({type:'Rule',title:`Rule ${i+1}`,body:r,page:'rules'})),
-  ...CONTACTS.map(c=>({type:'Contact',title:c.name,body:`${c.role} · ${c.note}`,page:'contacts'})),
-  ...FREE_TIME.map(f=>({type:'Free Time',title:f.name,body:f.note,page:'freetime'})),
-  {type:'Page',title:'Schedule',body:'Daily timeline rotations activities',page:'schedule'},
-  {type:'Page',title:'Map',body:'Camp layout directions areas buildings',page:'map'},
-  {type:'Page',title:'Camp Cup',body:'Team scores Red Yellow Green Blue points',page:'scoreboard'},
+  ...FAQ.map(f=>({type:'FAQ',title:f.q,body:f.a,page:'faq',secondary:true})),
+  ...RULES.map((r,i)=>({type:'Rule',title:`Rule ${i+1}`,body:r,page:'rules',secondary:true})),
+  ...CONTACTS.map(c=>({type:'Contact',title:c.name,body:`${c.role} · ${c.note}`,page:'contacts',secondary:true})),
+  ...FREE_TIME.map(f=>({type:'Free Time',title:f.name,body:f.note,page:'freetime',secondary:true})),
+  {type:'Page',title:'Schedule',body:'Daily timeline rotations activities',page:'schedule',secondary:false},
+  {type:'Page',title:'Map',body:'Camp layout directions areas buildings',page:'map',secondary:false},
+  {type:'Page',title:'Camp Cup',body:'Team scores Red Yellow Green Blue',page:'scoreboard',secondary:false},
 ]
 function SearchOverlay({onClose,nav}){
   const[q,setQ]=useState('')
   const results=q.length>1?SEARCHABLE.filter(r=>r.title.toLowerCase().includes(q.toLowerCase())||r.body.toLowerCase().includes(q.toLowerCase())).slice(0,8):[]
   return(
     <div style={{position:'fixed',inset:0,background:C.bg,zIndex:100,display:'flex',flexDirection:'column'}}>
-      <div style={{padding:'14px 16px',display:'flex',gap:10,alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
+      <div style={{padding:'calc(14px + env(safe-area-inset-top,0px)) 16px 12px',display:'flex',gap:10,alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
         <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search everything..." style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 14px',fontSize:16,color:C.text,outline:'none',fontFamily:'inherit'}}/>
         <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:15,fontWeight:600,fontFamily:'inherit'}}>Cancel</button>
       </div>
       <div style={{padding:'12px 16px',flex:1,overflowY:'auto'}}>
         {results.length>0?results.map((r,i)=>(
-          <button key={i} onClick={()=>nav(r.page)} style={{display:'block',width:'100%',background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'12px 14px',marginBottom:8,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}>
+          <Tap key={i} onClick={()=>nav(r.page,r.secondary)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'12px 14px',marginBottom:8}}>
             <span style={{fontSize:10,fontWeight:700,color:C.accent,textTransform:'uppercase',letterSpacing:'0.06em',background:C.accentBg,padding:'2px 7px',borderRadius:4,fontFamily:"'Oswald',sans-serif"}}>{r.type}</span>
             <p style={{margin:'5px 0 2px',fontSize:14,fontWeight:600,color:C.text}}>{r.title}</p>
             <p style={{margin:0,fontSize:12,color:C.muted}}>{r.body.substring(0,90)}{r.body.length>90?'…':''}</p>
-          </button>
-        )):q.length>1?<p style={{color:C.muted,textAlign:'center',marginTop:40,fontSize:14}}>No results for "{q}"</p>:<p style={{color:C.muted,textAlign:'center',marginTop:40,fontSize:14}}>Type to search schedule, FAQ, rules, and more</p>}
+          </Tap>
+        )):q.length>1?<p style={{color:C.muted,textAlign:'center',marginTop:40,fontSize:14}}>No results for "{q}"</p>:<p style={{color:C.muted,textAlign:'center',marginTop:40,fontSize:14}}>Search schedule, FAQ, rules, contacts and more</p>}
       </div>
     </div>
   )
 }
 
-// ─── ADMIN LOGIN ──────────────────────────────────────────────────────────────
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
 function AdminLogin(){
-  const[email,setEmail]=useState('')
-  const[pass,setPass]=useState('')
-  const[error,setError]=useState('')
-  const[loading,setLoading]=useState(false)
-  const submit=async(e)=>{
-    e.preventDefault();setLoading(true);setError('')
-    try{await signInWithEmailAndPassword(auth,email,pass)}
-    catch{setError('Invalid email or password.');setLoading(false)}
-  }
+  const[email,setEmail]=useState('');const[pass,setPass]=useState('');const[error,setError]=useState('');const[loading,setLoading]=useState(false)
+  const submit=async(e)=>{e.preventDefault();setLoading(true);setError('');try{await signInWithEmailAndPassword(auth,email,pass)}catch{setError('Invalid email or password.');setLoading(false)}}
   return(
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
       <p style={{fontFamily:"'Oswald',sans-serif",fontSize:13,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,marginBottom:4}}>NW Kids</p>
@@ -686,38 +692,26 @@ function AdminLogin(){
     </div>
   )
 }
-
-// ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
 function AdminDashboard({allScores,updateScore,announcement}){
-  const[draft,setDraft]=useState(announcement||'')
-  const[saving,setSaving]=useState(false)
+  const[draft,setDraft]=useState(announcement||'');const[saving,setSaving]=useState(false)
   useEffect(()=>setDraft(announcement||''),[announcement])
-
-  const postAnnouncement=async()=>{
-    setSaving(true)
-    await setDoc(doc(db,'announcement','current'),{text:draft,active:draft.trim().length>0})
-    setSaving(false)
-  }
-  const clearAnnouncement=async()=>{
-    setDraft('')
-    await setDoc(doc(db,'announcement','current'),{text:'',active:false})
-  }
-  const ScorePanel=({campKey,campName})=>{
+  const post=async()=>{setSaving(true);await setDoc(doc(db,'announcement','current'),{text:draft,active:draft.trim().length>0});setSaving(false)}
+  const clear=async()=>{setDraft('');await setDoc(doc(db,'announcement','current'),{text:'',active:false})}
+  const Panel=({campKey,campName})=>{
     const scores=allScores[campKey]||DEFAULT_SCORES
-    const sorted=[...Object.entries(scores)].sort(([,a],[,b])=>b-a)
     return(
       <div style={{marginBottom:20}}>
         <SecLabel>{campName} Scores</SecLabel>
-        {sorted.map(([k,score])=>{
+        {[...Object.entries(scores)].sort(([,a],[,b])=>b-a).map(([k,score])=>{
           const t=TEAM[k]
           return(
             <div key={k} style={{background:C.surface,borderRadius:12,padding:'10px 14px',marginBottom:8,border:`1px solid ${C.border}`,display:'flex',alignItems:'center',gap:12}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:t.color,flexShrink:0}}/>
               <p style={{margin:0,fontSize:15,fontWeight:700,color:C.text,flex:1,fontFamily:"'Oswald',sans-serif",textTransform:'uppercase',letterSpacing:'0.04em'}}>{t.label}</p>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <button onClick={()=>updateScore(campKey,k,-10)} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,fontSize:20,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>−</button>
-                <span style={{fontSize:24,fontWeight:700,color:C.text,minWidth:44,textAlign:'center',fontFamily:"'Oswald',sans-serif"}}>{score}</span>
-                <button onClick={()=>updateScore(campKey,k,10)} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.accentBdr}`,background:C.accentBg,color:C.accent,fontSize:20,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>+</button>
+                <button onClick={()=>updateScore(campKey,k,-10)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,fontSize:22,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>−</button>
+                <span style={{fontSize:24,fontWeight:700,color:C.text,minWidth:46,textAlign:'center',fontFamily:"'Oswald',sans-serif"}}>{score}</span>
+                <button onClick={()=>updateScore(campKey,k,10)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${C.accentBdr}`,background:C.accentBg,color:C.accent,fontSize:22,cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>+</button>
               </div>
             </div>
           )
@@ -727,28 +721,24 @@ function AdminDashboard({allScores,updateScore,announcement}){
   }
   return(
     <div style={{padding:'16px 16px 40px'}}>
-      <ScorePanel campKey="west1" campName="West One"/>
-      <ScorePanel campKey="west2" campName="West Two"/>
+      <Panel campKey="west1" campName="West One"/>
+      <Panel campKey="west2" campName="West Two"/>
       <SecLabel>Announcement</SecLabel>
-      <p style={{fontSize:12,color:C.muted,marginBottom:10}}>Shows as a banner on every leader's home screen.</p>
-      {announcement&&(
-        <div style={{background:C.yellowBg,border:`1px solid ${C.yellowBdr}`,borderRadius:10,padding:'10px 14px',marginBottom:10}}>
-          <p style={{margin:'0 0 2px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>Currently Live</p>
-          <p style={{margin:0,fontSize:13,color:C.text}}>{announcement}</p>
-        </div>
-      )}
+      {announcement&&<div style={{background:C.yellowBg,border:`1px solid ${C.yellowBdr}`,borderRadius:10,padding:'10px 14px',marginBottom:10}}><p style={{margin:'0 0 2px',fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>Live</p><p style={{margin:0,fontSize:13,color:C.text}}>{announcement}</p></div>}
       <textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type an announcement for all leaders…" style={{width:'100%',background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'12px 14px',fontSize:14,color:C.text,outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:80,marginBottom:10}}/>
       <div style={{display:'flex',gap:8}}>
-        <button onClick={postAnnouncement} disabled={saving} style={{flex:1,padding:'11px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{saving?'Saving…':'Post'}</button>
-        {announcement&&<button onClick={clearAnnouncement} style={{padding:'11px 16px',borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>}
+        <button onClick={post} disabled={saving} style={{flex:1,padding:'11px',borderRadius:10,background:C.accent,border:'none',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{saving?'Saving…':'Post'}</button>
+        {announcement&&<button onClick={clear} style={{padding:'11px 16px',borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>}
       </div>
     </div>
   )
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+const PRIMARY=['home','schedule','scoreboard','map']
 export default function CampHub(){
   const[page,setPage]=useState('home')
+  const[anim,setAnim]=useState('tabFade')
   const[search,setSearch]=useState(false)
   const[now,setNow]=useState(new Date())
   const[allScores,setAllScores]=useState({west1:DEFAULT_SCORES,west2:DEFAULT_SCORES})
@@ -758,70 +748,58 @@ export default function CampHub(){
   const[isAdmin,setIsAdmin]=useState(window.location.hash==='#admin')
   const[myTeam,setMyTeam]=useState(()=>localStorage.getItem('leaderTeam')||null)
   const[changingTeam,setChangingTeam]=useState(false)
+  const[showSplash,setShowSplash]=useState(()=>!sessionStorage.getItem('splashShown'))
+
+  // Inject global CSS
+  useEffect(()=>{
+    const s=document.createElement('style');s.textContent=GLOBAL_CSS;document.head.appendChild(s)
+    return()=>document.head.removeChild(s)
+  },[])
 
   useEffect(()=>{
-    const initIfMissing=async(campKey)=>{
-      const ref=doc(db,'scores',campKey)
-      const snap=await getDoc(ref)
-      if(!snap.exists())await setDoc(ref,DEFAULT_SCORES)
-    }
-    const u1=onSnapshot(doc(db,'scores','west1'),snap=>{
-      if(snap.exists())setAllScores(p=>({...p,west1:snap.data()}))
-      else initIfMissing('west1')
-    })
-    const u2=onSnapshot(doc(db,'scores','west2'),snap=>{
-      if(snap.exists())setAllScores(p=>({...p,west2:snap.data()}))
-      else initIfMissing('west2')
-    })
+    const init=async(k)=>{const r=doc(db,'scores',k);const s=await getDoc(r);if(!s.exists())await setDoc(r,DEFAULT_SCORES)}
+    const u1=onSnapshot(doc(db,'scores','west1'),s=>{if(s.exists())setAllScores(p=>({...p,west1:s.data()}));else init('west1')})
+    const u2=onSnapshot(doc(db,'scores','west2'),s=>{if(s.exists())setAllScores(p=>({...p,west2:s.data()}));else init('west2')})
     return()=>{u1();u2()}
   },[])
 
-  useEffect(()=>{
-    return onSnapshot(doc(db,'announcement','current'),snap=>{
-      if(snap.exists()&&snap.data().active)setAnnouncement(snap.data().text)
-      else setAnnouncement('')
-    })
-  },[])
-
+  useEffect(()=>{return onSnapshot(doc(db,'announcement','current'),s=>{if(s.exists()&&s.data().active)setAnnouncement(s.data().text);else setAnnouncement('')})},[])
   useEffect(()=>{return onAuthStateChanged(auth,u=>{setUser(u);setAuthChecked(true)})},[])
+  useEffect(()=>{const h=()=>setIsAdmin(window.location.hash==='#admin');window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[])
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(t)},[])
 
-  useEffect(()=>{
-    const onHash=()=>setIsAdmin(window.location.hash==='#admin')
-    window.addEventListener('hashchange',onHash)
-    return()=>window.removeEventListener('hashchange',onHash)
-  },[])
-
-  useEffect(()=>{
-    const t=setInterval(()=>setNow(new Date()),60000)
-    return()=>clearInterval(t)
-  },[])
-
-  const selectTeam=(key)=>{
-    localStorage.setItem('leaderTeam',key)
-    setMyTeam(key)
-  }
-
+  const selectTeam=(k)=>{localStorage.setItem('leaderTeam',k);setMyTeam(k)}
   const campInfo=getCampInfo(now)
   const currentScores=allScores[campInfo?.campKey||'west1']
-  const nav=(p)=>setPage(p)
-  const goHome=()=>setPage('home')
+
+  const nav=(p,isSecondary=false)=>{
+    const wasSecondary=!PRIMARY.includes(page)
+    if(isSecondary)setAnim('slideInRight')
+    else if(wasSecondary)setAnim('slideInLeft')
+    else setAnim('tabFade')
+    setPage(p)
+  }
+  const goBack=()=>nav('home',false)
 
   const updateScore=async(campKey,team,delta)=>{
     const cur=allScores[campKey]||DEFAULT_SCORES
-    const newVal=Math.max(0,(cur[team]||0)+delta)
-    await setDoc(doc(db,'scores',campKey),{...cur,[team]:newVal})
+    await setDoc(doc(db,'scores',campKey),{...cur,[team]:Math.max(0,(cur[team]||0)+delta)})
   }
 
-  // ── Team picker (first open) ──
-  if(!myTeam&&!isAdmin) return <TeamPicker onSelect={selectTeam}/>
+  // Splash
+  if(showSplash&&!isAdmin){
+    return <SplashScreen onDone={()=>{sessionStorage.setItem('splashShown','1');setShowSplash(false)}}/>
+  }
+  // Team picker
+  if(!myTeam&&!isAdmin){return <TeamPicker onSelect={selectTeam}/>}
 
-  // ── Admin view ──
+  // Admin
   if(isAdmin){
     if(!authChecked)return <div style={{color:C.muted,textAlign:'center',padding:40}}>Loading…</div>
     if(!user)return <AdminLogin/>
     return(
       <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}>
-        <div style={{padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`2px solid ${C.accent}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
+        <div style={{padding:`calc(14px + env(safe-area-inset-top,0px)) 16px 14px`,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`2px solid ${C.accent}`,background:C.bg,position:'sticky',top:0,zIndex:10}}>
           <div>
             <p style={{margin:0,fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif"}}>Admin</p>
             <h1 style={{margin:0,fontSize:22,fontWeight:700,textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.04em'}}>Camp Control</h1>
@@ -835,44 +813,51 @@ export default function CampHub(){
     )
   }
 
-  // ── Leader view ──
+  // Leader app
+  const pageAnimStyle={animation:`${anim} 260ms cubic-bezier(0.2,0,0,1) both`}
+
   return(
-    <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}>
+    <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",position:'relative',overflow:'hidden'}}>
+
+      {/* Header — home only */}
       {page==='home'&&(
         <div style={{
-          padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:`calc(14px + env(safe-area-inset-top,0px)) 16px 14px`,
+          display:'flex',alignItems:'center',justifyContent:'space-between',
           borderBottom:`1px solid ${C.border}`,background:C.bg,position:'sticky',top:0,zIndex:10,
           backgroundImage:'repeating-linear-gradient(-45deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 14px)',
         }}>
           <div>
             <p style={{margin:0,fontSize:14,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:C.yellow,fontFamily:"'Oswald',sans-serif",lineHeight:1}}>NW Kids</p>
-            <h1 style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1.1}}>Summer Camp</h1>
+            <h1 style={{margin:0,fontSize:24,fontWeight:700,letterSpacing:'0.04em',textTransform:'uppercase',color:C.text,fontFamily:"'Oswald',sans-serif",lineHeight:1.1}}>Summer Camp</h1>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             {myTeam&&(
-              <button onClick={()=>setChangingTeam(true)} style={{
-                background:TEAM[myTeam].bg,border:`1px solid ${TEAM[myTeam].color}50`,
-                borderRadius:20,padding:'5px 11px',display:'flex',alignItems:'center',gap:6,cursor:'pointer',
-              }}>
+              <Tap onClick={()=>setChangingTeam(true)} style={{background:TEAM[myTeam].bg,border:`1px solid ${TEAM[myTeam].color}50`,borderRadius:20,padding:'5px 11px',display:'flex',alignItems:'center',gap:6}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:TEAM[myTeam].color}}/>
                 <span style={{fontSize:12,fontWeight:700,color:TEAM[myTeam].color,fontFamily:"'Oswald',sans-serif",letterSpacing:'0.06em',textTransform:'uppercase'}}>{TEAM[myTeam].label}</span>
-              </button>
+              </Tap>
             )}
-            <button onClick={()=>setSearch(true)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:16}}>🔍</button>
+            <Tap onClick={()=>setSearch(true)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🔍</Tap>
           </div>
         </div>
       )}
 
-      {page==='home'      &&<HomeScreen campInfo={campInfo} now={now} nav={nav} announcement={announcement} myTeam={myTeam}/>}
-      {page==='schedule'  &&<SchedulePage campInfo={campInfo} now={now} onBack={goHome} myTeam={myTeam}/>}
-      {page==='scoreboard'&&<ScoreboardPage scores={currentScores} onBack={goHome}/>}
-      {page==='map'       &&<MapPage onBack={goHome}/>}
-      {page==='faq'       &&<FAQPage onBack={goHome}/>}
-      {page==='rules'     &&<RulesPage onBack={goHome}/>}
-      {page==='contacts'  &&<ContactsPage onBack={goHome}/>}
-      {page==='freetime'  &&<FreeTimePage onBack={goHome}/>}
+      {/* Page content */}
+      <div key={page} style={pageAnimStyle}>
+        {page==='home'       &&<HomeScreen campInfo={campInfo} now={now} nav={nav} announcement={announcement} myTeam={myTeam}/>}
+        {page==='schedule'   &&<SchedulePage campInfo={campInfo} now={now} myTeam={myTeam}/>}
+        {page==='scoreboard' &&<ScoreboardPage scores={currentScores}/>}
+        {page==='map'        &&<MapPage/>}
+        {page==='faq'        &&<FAQPage onBack={goBack}/>}
+        {page==='rules'      &&<RulesPage onBack={goBack}/>}
+        {page==='contacts'   &&<ContactsPage onBack={goBack}/>}
+        {page==='freetime'   &&<FreeTimePage onBack={goBack}/>}
+      </div>
 
-      {search&&<SearchOverlay onClose={()=>setSearch(false)} nav={(p)=>{nav(p);setSearch(false)}}/>}
+      <BottomNav page={page} nav={nav}/>
+
+      {search&&<SearchOverlay onClose={()=>setSearch(false)} nav={(p,s)=>{nav(p,s);setSearch(false)}}/>}
       {changingTeam&&<TeamChangeModal myTeam={myTeam} onSelect={selectTeam} onClose={()=>setChangingTeam(false)}/>}
     </div>
   )
