@@ -2,9 +2,9 @@ import { useState, useEffect, createContext, useContext, useRef } from 'react'
 import { db, auth } from './firebase'
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore'
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
-import { ChevronLeft, Search, Sun, Moon, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Leaf } from 'lucide-react'
+import { ChevronLeft, Search, Calendar, Trophy, Map, HelpCircle, BookOpen, Phone, Leaf } from 'lucide-react'
 
-// ─── THEMES ──────────────────────────────────────────────────────────────────
+// ─── THEME ───────────────────────────────────────────────────────────────────
 const DARK = {
   bg: '#101813',          surface: '#172018',      surfaceHi: '#1D2B1D',
   border: 'rgba(255,255,255,0.08)',
@@ -13,7 +13,7 @@ const DARK = {
   brand: '#C8E020',
   yellow: '#C8E020',      yellowBg: 'rgba(200,224,32,0.12)', yellowBdr: 'rgba(200,224,32,0.35)',
   yellowText: '#C8E020',
-  text: '#F0EDDF',        muted: '#7A9E8E',         mutedLight: '#9BBFAF',
+  text: '#F0EDDF',        muted: '#8FB8A8',         mutedLight: '#9BBFAF',
   green: '#52CC96',       greenBg: 'rgba(82,204,150,0.12)',
   blue: '#4A90E2',        purple: '#B87AFF',
   bannerBg: 'linear-gradient(150deg,#1D5A3F 0%,#0A3025 100%)',
@@ -25,27 +25,7 @@ const DARK = {
   progressTrack: 'rgba(255,255,255,0.10)',
 }
 
-const LIGHT = {
-  bg: '#F4F7F5',          surface: '#FFFFFF',       surfaceHi: '#EBF0EC',
-  border: 'rgba(0,0,0,0.09)',
-  accent: '#C44D0C',      accentBg: 'rgba(196,77,12,0.08)',  accentBdr: 'rgba(196,77,12,0.22)',
-  active: '#0D4A2F',      activeBg: 'rgba(13,74,47,0.08)',   activeBdr: 'rgba(13,74,47,0.22)',
-  brand: '#0D4A2F',
-  yellow: '#C8E020',      yellowBg: 'rgba(200,224,32,0.22)', yellowBdr: 'rgba(80,100,0,0.25)',
-  yellowText: '#2D3800',
-  text: '#0C1A10',        muted: '#4A6055',          mutedLight: '#6A8070',
-  green: '#0A5C2E',       greenBg: 'rgba(10,92,46,0.10)',
-  blue: '#1D5EA0',        purple: '#6A38B0',
-  bannerBg: 'linear-gradient(150deg,#D8F0E5 0%,#EAF8F2 100%)',
-  bannerBdr: 'rgba(13,74,47,0.18)',
-  bannerStripe: 'rgba(0,0,0,0.025)',
-  navBg: '#FFFFFF',
-  headerStripe: 'rgba(0,0,0,0.020)',
-  overlay: 'rgba(0,0,0,0.06)',
-  progressTrack: 'rgba(0,0,0,0.08)',
-}
-
-const ThemeCtx = createContext(LIGHT)
+const ThemeCtx = createContext(DARK)
 const useC = () => useContext(ThemeCtx)
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -272,7 +252,7 @@ function Tap({ onClick, children, style }) {
   )
 }
 
-// ─── SPLASH SCREEN — always dark, brand moment ────────────────────────────────
+// ─── SPLASH SCREEN ────────────────────────────────────────────────────────────
 function SplashScreen({ onDone }) {
   const [exiting, setExiting] = useState(false)
   useEffect(() => {
@@ -895,7 +875,7 @@ function BottomNav({ page, nav }) {
   )
 }
 
-// ─── ADMIN — always dark, hardcoded dark theme ────────────────────────────────
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
 function AdminLogin() {
   const [email, setEmail] = useState('')
   const [pass,  setPass]  = useState('')
@@ -910,7 +890,7 @@ function AdminLogin() {
     <div style={{ minHeight: '100vh', background: '#101813', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8E020', marginBottom: 4 }}>NW Kids</p>
       <h1 style={{ fontFamily: "'Oswald',sans-serif", fontSize: 28, fontWeight: 700, textTransform: 'uppercase', color: '#F0EDDF', marginBottom: 2, letterSpacing: '0.04em' }}>Admin Panel</h1>
-      <p style={{ fontSize: 13, color: '#7A9E8E', marginBottom: 28 }}>Sign in to manage scores and announcements</p>
+      <p style={{ fontSize: 13, color: '#8FB8A8', marginBottom: 28 }}>Sign in to manage scores and announcements</p>
       <form onSubmit={submit} style={{ width: '100%', maxWidth: 340 }}>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required style={{ display: 'block', width: '100%', marginBottom: 10, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 15, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
         <input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="Password" required style={{ display: 'block', width: '100%', marginBottom: 16, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', fontSize: 15, color: '#F0EDDF', outline: 'none', fontFamily: 'inherit' }} />
@@ -935,7 +915,7 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
     const s = allScores[campKey] || DEFAULT_SCORES
     return (
       <div style={{ marginBottom: 20 }}>
-        <p style={{ margin: '20px 0 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A9E8E', fontFamily: "'Oswald',sans-serif" }}>{campName} Scores</p>
+        <p style={{ margin: '20px 0 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>{campName} Scores</p>
         {[...Object.entries(s)].sort(([, a], [, b]) => b - a).map(([k, score]) => {
           const t = TEAM[k]
           return (
@@ -943,7 +923,7 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.color, flexShrink: 0 }} />
               <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#F0EDDF', flex: 1, fontFamily: "'Oswald',sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => updateScore(campKey, k, -10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#7A9E8E', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>-</button>
+                <button onClick={() => updateScore(campKey, k, -10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#8FB8A8', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>-</button>
                 <span style={{ fontSize: 24, fontWeight: 700, color: '#F0EDDF', minWidth: 46, textAlign: 'center', fontFamily: "'Oswald',sans-serif" }}>{score}</span>
                 <button onClick={() => updateScore(campKey, k, 10)} style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(224,92,26,0.40)', background: 'rgba(224,92,26,0.15)', color: '#E05C1A', fontSize: 22, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>+</button>
               </div>
@@ -958,8 +938,8 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
     <div style={{ padding: '16px 16px 40px' }}>
       <ScorePanel campKey="west1" campName="West One" />
       <ScorePanel campKey="west2" campName="West Two" />
-      <p style={{ margin: '20px 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A9E8E', fontFamily: "'Oswald',sans-serif" }}>Announcement</p>
-      <p style={{ fontSize: 12, color: '#7A9E8E', marginBottom: 10 }}>Shows as a banner on every leader home screen.</p>
+      <p style={{ margin: '20px 0 6px', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB8A8', fontFamily: "'Oswald',sans-serif" }}>Announcement</p>
+      <p style={{ fontSize: 12, color: '#8FB8A8', marginBottom: 10 }}>Shows as a banner on every leader home screen.</p>
       {announcement && (
         <div style={{ background: 'rgba(200,224,32,0.12)', border: '1px solid rgba(200,224,32,0.35)', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
           <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#C8E020', fontFamily: "'Oswald',sans-serif" }}>Live</p>
@@ -972,7 +952,7 @@ function AdminDashboard({ allScores, updateScore, announcement }) {
           {saving ? 'Saving...' : 'Post'}
         </button>
         {announcement && (
-          <button onClick={clear} style={{ padding: '11px 16px', borderRadius: 10, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', color: '#7A9E8E', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
+          <button onClick={clear} style={{ padding: '11px 16px', borderRadius: 10, background: '#172018', border: '1px solid rgba(255,255,255,0.08)', color: '#8FB8A8', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
         )}
       </div>
     </div>
@@ -995,15 +975,6 @@ export default function CampHub() {
   const [myTeam,       setMyTeam]        = useState(() => localStorage.getItem('leaderTeam') || null)
   const [changingTeam, setChangingTeam]  = useState(false)
   const [showSplash,   setShowSplash]    = useState(() => !sessionStorage.getItem('splashShown'))
-  const [isDark,       setIsDark]        = useState(() => localStorage.getItem('theme') === 'dark')
-
-  const theme = isDark ? DARK : LIGHT
-
-  const toggleTheme = () => {
-    const next = !isDark
-    setIsDark(next)
-    localStorage.setItem('theme', next ? 'dark' : 'light')
-  }
 
   useEffect(() => {
     const s = document.createElement('style')
@@ -1066,7 +1037,7 @@ export default function CampHub() {
   // Splash
   if (showSplash && !isAdmin) {
     return (
-      <ThemeCtx.Provider value={theme}>
+      <ThemeCtx.Provider value={DARK}>
         <SplashScreen onDone={() => { sessionStorage.setItem('splashShown', '1'); setShowSplash(false) }} />
       </ThemeCtx.Provider>
     )
@@ -1075,15 +1046,15 @@ export default function CampHub() {
   // Team picker
   if (!myTeam && !isAdmin) {
     return (
-      <ThemeCtx.Provider value={theme}>
+      <ThemeCtx.Provider value={DARK}>
         <TeamPicker onSelect={selectTeam} />
       </ThemeCtx.Provider>
     )
   }
 
-  // Admin view — always dark, no theme context needed
+  // Admin view
   if (isAdmin) {
-    if (!authChecked) return <div style={{ color: '#7A9E8E', textAlign: 'center', padding: 40 }}>Loading...</div>
+    if (!authChecked) return <div style={{ color: '#8FB8A8', textAlign: 'center', padding: 40 }}>Loading...</div>
     if (!user) return <AdminLogin />
     return (
       <div style={{ background: '#101813', minHeight: '100vh', color: '#F0EDDF', fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif" }}>
@@ -1092,7 +1063,7 @@ export default function CampHub() {
             <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C8E020', fontFamily: "'Oswald',sans-serif" }}>Admin</p>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, textTransform: 'uppercase', color: '#F0EDDF', fontFamily: "'Oswald',sans-serif", letterSpacing: '0.04em' }}>Camp Control</h1>
           </div>
-          <button onClick={() => signOut(auth).then(() => window.location.hash = '')} style={{ background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 12px', color: '#7A9E8E', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Sign Out</button>
+          <button onClick={() => signOut(auth).then(() => window.location.hash = '')} style={{ background: '#172018', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 12px', color: '#8FB8A8', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Sign Out</button>
         </div>
         <div style={{ maxWidth: 430, margin: '0 auto' }}>
           <AdminDashboard allScores={allScores} updateScore={updateScore} announcement={announcement} />
@@ -1103,22 +1074,22 @@ export default function CampHub() {
 
   // Leader view
   return (
-    <ThemeCtx.Provider value={theme}>
-      <div style={{ background: theme.bg, minHeight: '100vh', color: theme.text, fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", position: 'relative', overflow: 'hidden' }}>
+    <ThemeCtx.Provider value={DARK}>
+      <div style={{ background: DARK.bg, minHeight: '100vh', color: DARK.text, fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", position: 'relative', overflow: 'hidden' }}>
 
         {/* Header — home page only */}
         {page === 'home' && (
           <div style={{
             padding: `calc(14px + env(safe-area-inset-top,0px)) 16px 14px`,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderBottom: `1px solid ${theme.border}`,
-            background: theme.bg,
+            borderBottom: `1px solid ${DARK.border}`,
+            background: DARK.bg,
             position: 'sticky', top: 0, zIndex: 10,
-            backgroundImage: `repeating-linear-gradient(-45deg,${theme.headerStripe} 0px,${theme.headerStripe} 1px,transparent 1px,transparent 14px)`,
+            backgroundImage: `repeating-linear-gradient(-45deg,${DARK.headerStripe} 0px,${DARK.headerStripe} 1px,transparent 1px,transparent 14px)`,
           }}>
             <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: theme.brand, fontFamily: "'Oswald',sans-serif", lineHeight: 1 }}>NW Kids</p>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: theme.text, fontFamily: "'Oswald',sans-serif", lineHeight: 1.1 }}>Summer Camp</h1>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: DARK.brand, fontFamily: "'Oswald',sans-serif", lineHeight: 1 }}>NW Kids</p>
+              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: DARK.text, fontFamily: "'Oswald',sans-serif", lineHeight: 1.1 }}>Summer Camp</h1>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {myTeam && (
@@ -1127,11 +1098,8 @@ export default function CampHub() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: TEAM[myTeam].color, fontFamily: "'Oswald',sans-serif", letterSpacing: '0.06em', textTransform: 'uppercase' }}>{TEAM[myTeam].label}</span>
                 </Tap>
               )}
-              <Tap onClick={toggleTheme} style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {isDark ? <Sun size={17} color={theme.muted} strokeWidth={2} /> : <Moon size={17} color={theme.muted} strokeWidth={2} />}
-              </Tap>
-              <Tap onClick={() => setSearchOpen(true)} style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Search size={17} color={theme.muted} strokeWidth={2} />
+              <Tap onClick={() => setSearchOpen(true)} style={{ background: DARK.surface, border: `1px solid ${DARK.border}`, borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Search size={17} color={DARK.muted} strokeWidth={2} />
               </Tap>
             </div>
           </div>
